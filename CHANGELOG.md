@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## 5.6.8 (2026-07-02)
+
+
+### Bug Fixes
+
+* indicator center and middle misalign when item is a child. closes: [#4602](https://github.com/saadeghi/daisyui/issues/4602) ([6ceb65b](https://github.com/saadeghi/daisyui/commit/6ceb65bfcfc6f3d8f622679d24c339b357639a85))
+
 ## 5.6.7 (2026-07-01)
 
 
