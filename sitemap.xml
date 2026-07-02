@@ -583,6 +583,18 @@
     <loc>https://daisyui.com/docs/mcp/zed/</loc>
   </url>
   <url>
+    <loc>https://daisyui.com/docs/plugin/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/docs/plugin/claude-code/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/docs/plugin/codex/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/docs/plugin/cursor/</loc>
+  </url>
+  <url>
     <loc>https://daisyui.com/docs/roadmap/</loc>
   </url>
   <url>
@@ -667,16 +679,43 @@
     <loc>https://daisyui.com/pages/ai-ui-code-generation/</loc>
   </url>
   <url>
+    <loc>https://daisyui.com/pages/best-claude-code-design-skill-2026/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/best-codex-design-skill-2026/</loc>
+  </url>
+  <url>
     <loc>https://daisyui.com/pages/best-component-library-for-2026/</loc>
   </url>
   <url>
     <loc>https://daisyui.com/pages/best-component-library-for-beginners/</loc>
   </url>
   <url>
+    <loc>https://daisyui.com/pages/best-cursor-design-skill-2026/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/best-free-component-library-for-claude-code/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/best-free-component-library-for-codex/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/best-free-component-library-for-cursor/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/claude-code-free-design-skill/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/codex-free-design-skill/</loc>
+  </url>
+  <url>
     <loc>https://daisyui.com/pages/css-framework-for-school-project/</loc>
   </url>
   <url>
     <loc>https://daisyui.com/pages/css-library-for-html/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/cursor-free-design-skill/</loc>
   </url>
   <url>
     <loc>https://daisyui.com/pages/design-website-with-ai/</loc>
@@ -698,6 +737,15 @@
   </url>
   <url>
     <loc>https://daisyui.com/pages/generate-ui-with-llm/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/how-to-design-ui-with-claude-code/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/how-to-design-ui-with-codex/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/how-to-design-ui-with-cursor/</loc>
   </url>
   <url>
     <loc>https://daisyui.com/pages/install-tailwind-css-vite/</loc>
@@ -730,7 +778,43 @@
     <loc>https://daisyui.com/pages/tailwind-ui-components/</loc>
   </url>
   <url>
+    <loc>https://daisyui.com/pages/ui-design-mcp-server-for-claude-code/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/ui-design-mcp-server-for-codex/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/ui-design-mcp-server-for-cursor/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/ui-design-plugin-for-claude-code/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/ui-design-plugin-for-codex/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/ui-design-plugin-for-cursor/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/ui-design-skill-for-claude-code/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/ui-design-skill-for-codex/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/ui-design-skill-for-cursor/</loc>
+  </url>
+  <url>
     <loc>https://daisyui.com/pages/ui-library-for-hackaton/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/use-less-token-claude-code/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/use-less-token-codex/</loc>
+  </url>
+  <url>
+    <loc>https://daisyui.com/pages/use-less-token-cursor/</loc>
   </url>
   <url>
     <loc>https://daisyui.com/pages/what-is-tailwind-css-used-for/</loc>
