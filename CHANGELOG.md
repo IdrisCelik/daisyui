@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## 5.6.12 (2026-07-04)
+
+
+### Bug Fixes
+
+* email input RTL style in join ([76148f7](https://github.com/saadeghi/daisyui/commit/76148f77a9ea7953280e8a80d25d51bdc4ec8cc1))
+
 ## 5.6.11 (2026-07-04)
 
 
