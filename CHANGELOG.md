@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## 5.6.13 (2026-07-04)
+
+
+### Bug Fixes
+
+* modal-start and modal-end RTL ([0958416](https://github.com/saadeghi/daisyui/commit/095841602b95ba35aadc60120d0057110bfe3b65))
+
 ## 5.6.12 (2026-07-04)
 
 
