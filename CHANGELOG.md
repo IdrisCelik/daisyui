@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## 5.6.14 (2026-07-06)
+
+
+### Bug Fixes
+
+* `tabs-border` line size ([539a61c](https://github.com/saadeghi/daisyui/commit/539a61cb360970a0086835bbb5a4e46973741978))
+
 ## 5.6.13 (2026-07-04)
 
 
