@@ -12,7 +12,7 @@
   dir="ltr"
   data-sveltekit-preload-data
 >
-  <div class="w-full px-4 md:px-20" dir="ltr">
+  <div class="w-full px-4 md:px-20!" dir="ltr">
     <nav class="tabs tabs-lift tabs-lg my-14 flex-nowrap whitespace-nowrap">
       <a
         href="/resources/videos/"

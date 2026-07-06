@@ -16,7 +16,7 @@ You can easily add daisyUI skill to your project and your agent will be able to 
 
 Choose your coding agent:
 
-<div class="not-prose grid grid-cols-2 md:grid-cols-3 py-6 *:-ms-px *:-mt-px">
+<div class="not-prose grid grid-cols-2 md:grid-cols-3! py-6 *:-ms-px *:-mt-px">
   {#each data.skillEditors as editor}
     <a href="/docs/skill/{editor.slug}/" class="bg-base-100 relative overflow-hidden group flex items-center gap-4 flex-col px-4 py-8 border-base-content/5 border-[length:var(--border)] hover:shadow-md hover:-translate-y-1 focus:shadow-sm focus:-translate-y-0.5 transition-all">
       <div class="grid *:[grid-area:1/1] [&_svg]:size-16 [&_img]:size-16">

@@ -56,4 +56,4 @@
   </div>
   <AlternativeSidebar />
 </div>
-<Footer />
+<!-- <Footer /> -->

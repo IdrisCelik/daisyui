@@ -285,6 +285,9 @@
           {$t("contributing")}
           {@html newtabicon}
         </a>
+      </div>
+      <div>
+        <span class="footer-title opacity-70">AI</span>
         <a
           target="_blank"
           rel="noopener, noreferrer"
@@ -294,21 +297,15 @@
           llms.txt
           {@html newtabicon}
         </a>
-      </div>
-      <div>
-        <span class="footer-title opacity-70">{$t("pages")}</span>
-        <a class="link link-hover" href="/docs/install/">{$t("how-to-install")}</a>
-        <a class="link link-hover" href="/docs/use/">{$t("how-to-use-components")}</a>
-        <a class="link link-hover" href="/docs/customize/">{$t("how-to-customize")}</a>
-        <a class="link link-hover" href="/docs/themes/">{$t("how-to-use-themes")}</a>
-        <a class="link link-hover" href="/docs/colors/">{$t("color-system")}</a>
-        <a class="link link-hover" href="/docs/config/">{$t("config")}</a>
-        <a class="link link-hover" href="/resources/">{$t("Resources")}</a>
-        <a class="link link-hover" href="/blog/">{$t("Blog")}</a>
-        <a class="link link-hover" href="/store/">{$t("Store")}</a>
-        <a class="link link-hover" href="/store/daisyui-figma-library/">daisyUI Figma Library</a>
-        <a class="link link-hover" href="/blueprint/">Blueprint: daisyUI MCP server</a>
-        <a class="link link-hover" href="/docs/skill/">SKILL.md</a>
+        <a class="link link-hover" href="/blueprint/">UI design MCP server</a>
+        <a class="link link-hover" href="/docs/skill/">UI design agent Skill</a>
+        <a class="link link-hover" href="/skills/daisyui-dashboard/"
+          >Dashboard design skill for Claude</a
+        >
+        <a class="link link-hover" href="/skills/daisyui-charts/">Chart skill for Claude</a>
+        <a class="link link-hover" href="/docs/plugin/codex/">UI design Codex plugin</a>
+        <a class="link link-hover" href="/docs/plugin/cursor/">UI design Cursor plugin</a>
+        <a class="link link-hover" href="/docs/plugin/claude-code/">UI design Claude Code plugin</a>
       </div>
       <div>
         <span class="footer-title opacity-70">{$t("Frameworks")}</span>

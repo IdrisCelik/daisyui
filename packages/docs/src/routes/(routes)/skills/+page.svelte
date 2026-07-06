@@ -97,7 +97,7 @@
     {$t("Official daisyUI Skills")}
   </h1>
   <p class="text-base-content/60 mb-2 text-sm">
-    {$t("Enough with AI slop")} <span class="text-base-content">🙅‍♂️</span>
+    {$t("Enough with AI slop")} <span class="text-base-content">🙅</span>
     {$t("Setup your coding agent to generate better UI.")}
   </p>
   <div class="text-base-content/60 mt-6 text-sm">{$t("Compatible with all coding agents")}</div>

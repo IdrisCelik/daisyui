@@ -23,6 +23,10 @@
     children,
   } = $props()
 
+  const escapeComponentDescriptionTags = (text) => {
+    return text.replace(/<(?!\/?code\b)([^>]+)>/g, "&lt;$1&gt;")
+  }
+
   onMount(() => {
     const resetTimers = new WeakMap()
     const copyIconPath =
@@ -439,7 +443,7 @@
                     {/if}
                   </td>
                   <td class="w-8/12 min-w-[20rem]">
-                    {@html $t(item.desc)}
+                    {@html escapeComponentDescriptionTags($t(item.desc))}
                     {#if item.default}
                       <span class="text-base-content/30 text-xs">[{@html $t("Default")}]</span>
                     {/if}

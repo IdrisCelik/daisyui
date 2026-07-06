@@ -18,7 +18,7 @@
       <h1><Translate text="All daisyUI components" /></h1>
       <p>{Object.keys(components).length} <Translate text="components" /></p>
     </div>
-    <div class="not-prose grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+    <div class="not-prose grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3! lg:grid-cols-4">
       {#each components as { slug, title, desc }}
         <a
           class="card card-sm hover:bg-base-200 transition-all duration-200 hover:-translate-y-1"

@@ -38,7 +38,7 @@ Semantic classes narrow the search space. Instead of asking the generator to inv
 The same idea works across a page:
 
 ```html
-<section class="grid gap-6 md:grid-cols-3">
+<section class="grid gap-6 md:grid-cols-3!">
   <div class="card bg-base-100 shadow-sm">
     <div class="card-body">
       <h2 class="card-title">Team usage</h2>

@@ -222,7 +222,7 @@
   />
 </svelte:head>
 
-<div class="w-full px-4 pt-20 md:px-20">
+<div class="w-full px-4 pt-20 md:px-20!">
   {#await fetchDiscount then discount}
     {#if discount?.data.attributes.expires_at && new Date(discount?.data.attributes.expires_at).toISOString() > currentDate && isDiscountApplicableToBlueprint(discount)}
       <div class="fixed inset-e-2 bottom-2 z-20 max-lg:hidden">
@@ -1306,7 +1306,7 @@
   </div>
 </div>
 <div
-  class="border-base-300 mt-20 min-h-[50rem] w-full border-t border-b px-4 py-20 md:px-20"
+  class="border-base-300 mt-20 min-h-[50rem] w-full border-t border-b px-4 py-20 md:px-20!"
   style="
                 background-image: linear-gradient(var(--color-base-300) 1px, transparent 1px), linear-gradient(90deg, var(--color-base-300) 1px, transparent 1px), linear-gradient(var(--color-base-300) 0.5px, transparent 0.5px), linear-gradient(90deg, var(--color-base-300) 0.5px, var(--color-base-100) 0.5px);
                 background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
@@ -1723,7 +1723,7 @@
     </div>
   </div>
 </div>
-<div class="-mt-20 w-full px-4 pt-20 md:px-20">
+<div class="-mt-20 w-full px-4 pt-20 md:px-20!">
   <!-- features -->
 
   <div class="mt-50 mb-16 flex justify-center">
@@ -1745,7 +1745,7 @@
     </div>
   </div>
 
-  <!-- <div class="mx-auto mb-40 grid max-w-2xl place-items-center justify-around gap-10 md:grid-cols-3">
+  <!-- <div class="mx-auto mb-40 grid max-w-2xl place-items-center justify-around gap-10 md:grid-cols-3!">
     <div class="flex flex-col items-center gap-2">
       <div class="font-title text-7xl tabular-nums">74</div>
       <div class="text-xs opacity-50">Resource files</div>
@@ -4358,7 +4358,7 @@
 
   <!-- FAQ -->
   <div id="faq" class="mx-auto max-w-[100rem]">
-    <div class="w-full px-4 pt-20 md:px-20">
+    <div class="w-full px-4 pt-20 md:px-20!">
       <div class="mx-auto my-40 grid gap-2 gap-y-16 lg:grid-cols-2" id="faq">
         <div class="flex flex-col gap-6">
           <h2 class="font-title lg:text-base-content/10 text-4xl font-semibold lg:text-[10rem]">
