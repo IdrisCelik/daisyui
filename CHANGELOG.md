@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.6.15](https://github.com/saadeghi/daisyui/compare/v5.6.14...v5.6.15) (2026-07-08)
+
+
+### Bug Fixes
+
+* btn-active colors ([#4594](https://github.com/saadeghi/daisyui/issues/4594)). closes [#4591](https://github.com/saadeghi/daisyui/issues/4591) ([1fcd573](https://github.com/saadeghi/daisyui/commit/1fcd573c41bfbc460424bb490d6f0dc89307e282))
+
 ## 5.6.14 (2026-07-06)
 
 
