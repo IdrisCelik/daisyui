@@ -145,7 +145,7 @@
           href="/"
           aria-current="page"
           aria-label="daisyUI"
-          class="me-2 flex w-35 shrink-0 items-center gap-2"
+          class="me-2 flex w-25 sm:w-35 shrink-0 items-center gap-2"
           oncontextmenu={(e) => {
             e.preventDefault()
             goto("/brand")
@@ -330,7 +330,7 @@
           </g>
         </svg>
         {#if githubStarsLabel}
-          <span class="text-[0.625rem] font-normal font-mono tabular-nums">{githubStarsLabel}</span>
+          <span class="text-[0.625rem] font-normal font-mono tabular-nums max-sm:hidden">{githubStarsLabel}</span>
         {/if}
       </a>
     </div>
