@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.6.17](https://github.com/saadeghi/daisyui/compare/v5.6.16...v5.6.17) (2026-07-11)
+
+
+### Bug Fixes
+
+* animate progress value ([#4624](https://github.com/saadeghi/daisyui/issues/4624)). closes: [#4622](https://github.com/saadeghi/daisyui/issues/4622) ([c7adfbf](https://github.com/saadeghi/daisyui/commit/c7adfbfebb7cba38022ed914b1bf14a3cba86d17))
+
 ## [5.6.16](https://github.com/saadeghi/daisyui/compare/v5.6.15...v5.6.16) (2026-07-08)
 
 
