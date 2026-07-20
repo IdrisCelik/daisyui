@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.6.22](https://github.com/saadeghi/daisyui/compare/v5.6.21...v5.6.22) (2026-07-20)
+
+### Bug Fixes
+
+* `collapse` compatibility with Tailwind CSS utility class in colgroup. closes: [#4463](https://github.com/saadeghi/daisyui/issues/4463) ([f905291](https://github.com/saadeghi/daisyui/commit/f90529196175d9818b0466e1807cc6742050102b))
 ## [5.6.21](https://github.com/saadeghi/daisyui/compare/v5.6.20...v5.6.21) (2026-07-20)
 
 ### Bug Fixes
