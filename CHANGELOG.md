@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.6.19](https://github.com/saadeghi/daisyui/compare/v5.6.18...v5.6.19) (2026-07-20)
+
+### Bug Fixes
+
+* Force OTP to LTR. closes: [#4609](https://github.com/saadeghi/daisyui/issues/4609) ([822ed4c](https://github.com/saadeghi/daisyui/commit/822ed4c6c160c67eeff6a25808edcc89a9056ce0))
 ## [5.6.18](https://github.com/saadeghi/daisyui/compare/v5.6.17...v5.6.18) (2026-07-12)
 
 
