@@ -304,6 +304,7 @@
         >
         <a class="link link-hover" href="/skills/daisyui-charts/">Chart skill for Claude</a>
         <a class="link link-hover" href="/docs/plugin/codex/">UI design Codex plugin</a>
+        <a class="link link-hover" href="/docs/plugin/grok/">UI design Grok Build plugin</a>
         <a class="link link-hover" href="/docs/plugin/cursor/">UI design Cursor plugin</a>
         <a class="link link-hover" href="/docs/plugin/claude-code/">UI design Claude Code plugin</a>
       </div>

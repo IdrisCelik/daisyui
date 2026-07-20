@@ -3,6 +3,7 @@
   import SEO from "$components/SEO.svelte"
   import DiscountCountdown from "$components/DiscountCountdown.svelte"
   import Clipboard from "$components/Clipboard.svelte"
+  import { codingTools } from "$lib/data/codingTools.js"
   import { fade, slide } from "svelte/transition"
   import {
     fetchActiveDiscount,
@@ -470,7 +471,7 @@
       </div>
       <div class="text-base-content/60 mt-6 text-sm">Compatible with all coding agents</div>
       <div class="mt-2 mb-6 flex flex-wrap gap-2">
-        {#each data.codingTools as tool, index}
+        {#each codingTools as tool, index}
           <div class="bg-base-200 border-base-300 rounded-field tooltip p-3" data-tip={tool.name}>
             <img
               src="https://img.daisyui.com/images/logos/{tool.icon}.svg"

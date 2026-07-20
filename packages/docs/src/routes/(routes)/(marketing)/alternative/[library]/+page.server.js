@@ -1,6 +1,7 @@
 import { PUBLIC_DAISYUI_API_PATH } from "$env/static/public"
 import { load as loadYaml } from "js-yaml"
 import { error, isHttpError } from "@sveltejs/kit"
+import { getAlternativeRouteEntries, getCompareManifest } from "$lib/server/content/comparisons.js"
 
 const fetchYamlData = async (url) => {
   try {
@@ -19,7 +20,6 @@ const fetchYamlData = async (url) => {
 }
 
 const fetchAlternativeData = () => fetchYamlData(`${PUBLIC_DAISYUI_API_PATH}/data/alternative.yaml`)
-const fetchCompareData = () => fetchYamlData(`${PUBLIC_DAISYUI_API_PATH}/data/compare.yaml`)
 
 const getDeterministicIndex = (seedString, maxIndex) => {
   if (maxIndex <= 0) return 0
@@ -466,7 +466,7 @@ export const load = async ({ params }) => {
   try {
     const [alternativeData, compareData] = await Promise.all([
       fetchAlternativeData(),
-      fetchCompareData(),
+      getCompareManifest(),
     ])
 
     const stringsData = alternativeData.strings
@@ -480,12 +480,12 @@ export const load = async ({ params }) => {
 
     validateStringsData(stringsData)
 
-    const libraryData = compareData.data[params.library]
-    const daisyUIData = compareData.data.daisyui
-
-    if (!libraryData || !daisyUIData || params.library === "daisyui") {
+    if (params.library === "daisyui" || !Object.hasOwn(compareData.data, params.library)) {
       throw error(404, `Library data not found for: ${params.library}`)
     }
+
+    const libraryData = compareData.data[params.library]
+    const daisyUIData = compareData.data.daisyui
 
     const allStringKeys = Object.keys(stringsData)
     const minLengths = allStringKeys.map((key) => {
@@ -583,19 +583,5 @@ export const load = async ({ params }) => {
 }
 
 export const entries = async () => {
-  try {
-    const compareData = await fetchCompareData()
-
-    if (!compareData?.data) {
-      console.warn("No comparison data found in YAML for generating entries.")
-      return []
-    }
-
-    return Object.keys(compareData.data)
-      .filter((key) => key !== "daisyui")
-      .map((key) => ({ library: key }))
-  } catch (err) {
-    console.error("Error generating entries:", err)
-    return []
-  }
+  return getAlternativeRouteEntries()
 }

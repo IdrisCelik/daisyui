@@ -1,6 +1,7 @@
 <script>
   import { onMount } from "svelte"
   import { t } from "$lib/i18n.svelte.js"
+  import { parseSearchCsv } from "$lib/searchCsv.js"
 
   // Search functionality
   let searchData = $state([])
@@ -460,38 +461,8 @@ Card,/components/card/`
     isSearchLoading = true
 
     try {
-      // Parse initial CSV data first
-      const parseCSVData = (csvText) => {
-        const lines = csvText.trim().split("\n")
-        return lines
-          .map((line) => {
-            // Simple CSV parsing - handle quoted values
-            const parts = []
-            let current = ""
-            let inQuotes = false
-            for (let i = 0; i < line.length; i++) {
-              const char = line[i]
-              if (char === '"') {
-                inQuotes = !inQuotes
-              } else if (char === "," && !inQuotes) {
-                parts.push(current.trim())
-                current = ""
-              } else {
-                current += char
-              }
-            }
-            parts.push(current.trim())
-            return {
-              title: parts[0]?.replace(/^"|"$/g, "") || "",
-              url: parts[1]?.replace(/^"|"$/g, "") || "",
-              classnames: parts[2]?.replace(/^"|"$/g, "") || "",
-            }
-          })
-          .filter((item) => item.title && item.url)
-      }
-
       // Parse initial data
-      const initialResults = parseCSVData(initialSearchCSV)
+      const initialResults = parseSearchCsv(initialSearchCSV, { hasHeader: false })
 
       let csvResults = []
       try {
@@ -499,9 +470,7 @@ Card,/components/card/`
         const response = await fetch(`/search.csv?t=${today}`)
         if (response.ok) {
           const csvText = await response.text()
-          // Parse CSV data (skip header row for external CSV)
-          const lines = csvText.trim().split("\n")
-          csvResults = parseCSVData(lines.slice(1).join("\n"))
+          csvResults = parseSearchCsv(csvText, { hasHeader: "auto" })
         }
       } catch (error) {
         console.warn("Could not fetch external search data:", error)

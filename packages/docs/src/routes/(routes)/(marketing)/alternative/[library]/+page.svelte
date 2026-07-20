@@ -10,7 +10,7 @@
     return typeof value === "boolean" ? (value ? "Yes" : "No") : value
   }
 
-  const seoKeywords = [
+  const seoKeywords = $derived([
     `${data.library.name} alternative`,
     "CSS components library",
     "Tailwind CSS components",
@@ -21,7 +21,7 @@
     "lightweight UI library",
     "themeable CSS components",
     "modern CSS framework",
-  ]
+  ])
 </script>
 
 <SEO

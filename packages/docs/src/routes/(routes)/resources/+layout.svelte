@@ -3,8 +3,7 @@
   import { page } from "$app/stores"
   import Footer from "$components/Footer.svelte"
   import AlternativeSidebar from "$components/AlternativeSidebar.svelte"
-  let { data, children } = $props()
-  let { tags } = data
+  let { children } = $props()
 </script>
 
 <div

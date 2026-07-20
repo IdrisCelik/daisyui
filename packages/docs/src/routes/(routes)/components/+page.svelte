@@ -4,7 +4,7 @@
   import Translate from "$components/Translate.svelte"
   import AlternativeSidebar from "$components/AlternativeSidebar.svelte"
   let { data } = $props()
-  let { components } = data
+  const components = $derived(data.components)
 </script>
 
 <SEO

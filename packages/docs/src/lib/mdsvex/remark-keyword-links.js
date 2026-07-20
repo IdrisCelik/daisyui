@@ -2,6 +2,7 @@ import { visit } from "unist-util-visit"
 import fs from "fs/promises"
 import path from "path"
 import { fileURLToPath } from "url"
+import { marketingPages } from "../data/marketingPages.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -12,7 +13,7 @@ let lastScanTime = 0
 const CACHE_DURATION = 5000 // 5 seconds
 
 /**
- * Scans the pages directory and extracts keywords from frontmatter
+ * Scans clustered marketing pages and extracts keywords from frontmatter
  * Returns a map of keyword -> { url, title, keywords }
  */
 async function scanPagesForKeywords() {
@@ -25,57 +26,46 @@ async function scanPagesForKeywords() {
 
   const mappings = new Map()
 
-  // Path to the pages directory
-  const pagesDir = path.join(__dirname, "../../routes/(routes)/(marketing)/pages")
+  const marketingDir = path.join(__dirname, "../../routes/(routes)/(marketing)/(groups)")
 
-  try {
-    const entries = await fs.readdir(pagesDir, { withFileTypes: true })
+  for (const page of marketingPages) {
+    const pageFile = path.join(marketingDir, page.cluster, page.slug ? page.slug : "", "+page.md")
 
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const pageFile = path.join(pagesDir, entry.name, "+page.md")
+    try {
+      const content = await fs.readFile(pageFile, "utf-8")
 
-        try {
-          const content = await fs.readFile(pageFile, "utf-8")
+      // Extract frontmatter
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/)
+      if (!frontmatterMatch) continue
 
-          // Extract frontmatter
-          const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/)
-          if (!frontmatterMatch) continue
+      const frontmatter = frontmatterMatch[1]
 
-          const frontmatter = frontmatterMatch[1]
+      // Extract title
+      const titleMatch = frontmatter.match(/^title:\s*(.+)$/m)
+      const title = titleMatch ? titleMatch[1].trim() : page.label
 
-          // Extract title
-          const titleMatch = frontmatter.match(/^title:\s*(.+)$/m)
-          const title = titleMatch ? titleMatch[1].trim() : entry.name
+      // Extract keywords
+      const keywordsMatch = frontmatter.match(/^keywords:\s*(.+)$/m)
+      if (!keywordsMatch) continue
 
-          // Extract keywords
-          const keywordsMatch = frontmatter.match(/^keywords:\s*(.+)$/m)
-          if (!keywordsMatch) continue
+      const keywords = keywordsMatch[1]
+        .split(",")
+        .map((k) => k.trim())
+        .filter((k) => k.length > 0)
 
-          const keywords = keywordsMatch[1]
-            .split(",")
-            .map((k) => k.trim())
-            .filter((k) => k.length > 0)
-
-          const url = `/pages/${entry.name}/`
-
-          // Store each keyword as a mapping to this page
-          keywords.forEach((keyword) => {
-            mappings.set(keyword.toLowerCase(), {
-              url,
-              title,
-              keywords,
-              originalKeyword: keyword,
-            })
-          })
-        } catch (err) {
-          // Skip files that can't be read
-          console.warn(`Could not read page file: ${pageFile} - ${err.message}`)
-        }
-      }
+      // Store each keyword as a mapping to this page
+      keywords.forEach((keyword) => {
+        mappings.set(keyword.toLowerCase(), {
+          url: page.path,
+          title,
+          keywords,
+          originalKeyword: keyword,
+        })
+      })
+    } catch (err) {
+      // Skip files that can't be read
+      console.warn(`Could not read page file: ${pageFile} - ${err.message}`)
     }
-  } catch (err) {
-    console.warn(`Could not scan pages directory: ${pagesDir} - ${err.message}`)
   }
 
   keywordMappings = mappings
@@ -190,12 +180,12 @@ export function remarkKeywordLinks() {
     const filename = file.filename || file.history?.[0] || ""
     let currentPageUrl = ""
 
-    if (filename.includes("/pages/")) {
-      const match = filename.match(/\/pages\/([^/]+)\//)
-      if (match) {
-        currentPageUrl = `/pages/${match[1]}/`
-      }
-    }
+    const normalizedFilename = filename.replaceAll("\\", "/")
+    const currentPage = marketingPages.find((page) => {
+      const routePath = page.slug ? `${page.cluster}/${page.slug}` : page.cluster
+      return normalizedFilename.includes(`/(marketing)/(groups)/${routePath}/+page.md`)
+    })
+    currentPageUrl = currentPage?.path || ""
 
     // Get keyword mappings
     const keywordMappings = await scanPagesForKeywords()

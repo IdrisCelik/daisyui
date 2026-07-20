@@ -1,14 +1,13 @@
 export const prerender = true
 
-import { load } from "../+layout.server.js"
+import { getStoreProducts } from "$lib/server/content/store.js"
 
 const siteTitle = "daisyUI Store"
 const siteDesc = "Professional templates made by daisyUI"
 const storeUrl = "https://daisyui.com/store/"
 
 export const GET = async () => {
-  const data = await load({})
-  const products = data.products
+  const products = await getStoreProducts()
   const body = render(products)
   return new Response(body, {
     headers: {

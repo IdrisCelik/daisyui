@@ -3,7 +3,9 @@ import { load as layoutLoad } from "../+layout.server.js"
 
 export async function entries() {
   const { skillEditors } = await layoutLoad()
-  return skillEditors.map((editor) => ({ slug: editor.slug }))
+  return skillEditors
+    .filter((editor) => editor.slug !== "grok")
+    .map((editor) => ({ slug: editor.slug }))
 }
 
 export async function load({ params, parent }) {

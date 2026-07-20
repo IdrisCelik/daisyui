@@ -1,19 +1,9 @@
 <script>
   import { onMount } from "svelte"
-  import { browser } from "$app/environment"
-  import { PUBLIC_DAISYUI_API_PATH } from "$env/static/public"
-  import { page } from "$app/stores"
-  import LogoHorizontal from "$components/LogoHorizontal.svelte"
-  import CompanyLogos from "$components/CompanyLogos.svelte"
   import Footer from "$components/Footer.svelte"
   import SEO from "$components/SEO.svelte"
   import { t } from "$lib/i18n.svelte.js"
-  let { title, desc, children, data } = $props()
-  async function fetchStats() {
-    if (!browser) return
-    const response = await fetch(`${PUBLIC_DAISYUI_API_PATH}/stats.json`)
-    return await response.json()
-  }
+  let { title, desc, children } = $props()
 
   onMount(() => {
     const handleClick = async (event) => {

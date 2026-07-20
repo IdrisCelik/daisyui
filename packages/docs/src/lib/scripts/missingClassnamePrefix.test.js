@@ -1,6 +1,11 @@
-import { test } from "bun:test"
-import { readdirSync, readFileSync, existsSync } from "fs"
-import { join } from "path"
+import { expect, test } from "bun:test"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+
+const scriptDir = dirname(fileURLToPath(import.meta.url))
+const docsRoot = resolve(scriptDir, "../../..")
+const repoRoot = resolve(docsRoot, "../..")
 
 // Helper function to recursively get all files matching a pattern
 function getFiles(dir, pattern) {
@@ -21,12 +26,7 @@ function getFiles(dir, pattern) {
 }
 
 // Step 1: Find all class.json files and extract class names
-const classJsonFiles = getFiles("./packages/daisyui/components", /class\.json$/)
-if (classJsonFiles.length === 0) {
-  console.error("No class.json files found in daisyui/components")
-} else {
-  console.log(`Found ${classJsonFiles.length} class.json files`)
-}
+const classJsonFiles = getFiles(join(repoRoot, "packages/daisyui/components"), /class\.json$/)
 
 let classList = []
 
@@ -36,12 +36,7 @@ classJsonFiles.forEach((file) => {
 })
 
 // Step 2: Find all .md files and extract HTML/JSX code blocks
-const mdFiles = getFiles("./packages/docs/src/routes/(routes)/components", /\+page\.md$/)
-if (mdFiles.length === 0) {
-  console.error("No .md files found in ./packages/docs/src/routes/(routes)/components")
-} else {
-  console.log(`Found ${mdFiles.length} .md files`)
-}
+const mdFiles = getFiles(join(docsRoot, "src/routes/(routes)/components"), /\+page\.md$/)
 
 let codeBlocks = []
 
@@ -54,10 +49,18 @@ mdFiles.forEach((file) => {
 })
 
 // Step 3: Check if class names in classList are prefixed with $$ in class or className attributes
+test("Finds generated class metadata and component documentation", () => {
+  expect(classJsonFiles.length).toBeGreaterThan(0)
+  expect(classList.length).toBeGreaterThan(0)
+  expect(mdFiles.length).toBeGreaterThan(0)
+  expect(codeBlocks.length).toBeGreaterThan(0)
+})
+
 test("Class names should be prefixed with $$ in code blocks", () => {
   codeBlocks.forEach(({ file, block }) => {
     classList.forEach((className) => {
-      const regex = new RegExp(`class(Name)?="([^"]*\\b${className}\\b[^"]*)"`, "g")
+      const escapedClassName = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      const regex = new RegExp(`class(Name)?="([^"]*\\b${escapedClassName}\\b[^"]*)"`, "g")
       const matches = block.match(regex) || []
       matches.forEach((match) => {
         const classAttr = match.split("=")[1].replace(/"/g, "")

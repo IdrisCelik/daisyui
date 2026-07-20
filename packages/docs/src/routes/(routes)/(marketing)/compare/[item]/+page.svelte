@@ -8,28 +8,30 @@
 
   const firstAttributes = $derived(Object.entries(data.first.attributes))
   const secondAttributes = $derived(Object.entries(data.second.attributes))
-  const attributeRules = data.attributeRules
-  const libraries = data.libraries
+  const attributeRules = $derived(data.attributeRules)
+  const libraries = $derived(data.libraries)
 
   // Generate canonical compare pairs: sort the two keys so that "a-vs-b" and
   // "b-vs-a" collapse to the same canonical ordering. Only emit a pair when
   // the current ordering matches the canonical order, which prevents
   // duplicated swapped links in the UI (matches sitemap/SEO canonicalization).
-  const comparePairs = libraries
-    .flatMap((a) =>
-      libraries
-        .filter((b) => a.key !== b.key)
-        .map((b) => {
-          const [smaller, larger] = [a.key, b.key].sort()
-          return a.key === smaller ? { a, b } : null
-        }),
-    )
-    .filter(Boolean)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 30)
+  const comparePairs = $derived(
+    libraries
+      .flatMap((a) =>
+        libraries
+          .filter((b) => a.key !== b.key)
+          .map((b) => {
+            const [smaller, larger] = [a.key, b.key].sort()
+            return a.key === smaller ? { a, b } : null
+          }),
+      )
+      .filter(Boolean)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 30),
+  )
 
-  let selectedFirst = $state(data.first.key)
-  let selectedSecond = $state(data.second.key)
+  let selectedFirst = $derived(data.first.key)
+  let selectedSecond = $derived(data.second.key)
 
   function isPositiveAttribute(value) {
     return typeof value === "object" && "positive" in value

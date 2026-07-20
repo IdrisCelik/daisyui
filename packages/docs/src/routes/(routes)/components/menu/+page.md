@@ -23,6 +23,8 @@ classnames:
     desc: For the element inside <li> to look focused
   - class: menu-dropdown-show
     desc: Shows the menu-dropdown-toggle and menu-dropdown collapsible submenu using JS
+  - class: menu-paged
+    desc: Shows one level at a time and turns the open summary into a back button
   size:
   - class: menu-xs
     desc: Extra small size
@@ -75,6 +77,40 @@ classnames:
   <li><a>Item 1</a></li>
   <li><a>Item 2</a></li>
   <li><a>Item 3</a></li>
+</ul>
+```
+
+
+### ~Paged menu with nested submenus
+<ul class="menu menu-paged menu-vertical bg-base-200 rounded-box w-56 lg:w-auto">
+  <li><button>Home</button></li>
+  <li><button>About</button></li>
+  <li>
+    <details>
+      <summary>Products</summary>
+      <ul>
+        <li><button>All products</button></li>
+        <li><button>Electronics</button></li>
+        <li><button>Clothing</button></li>
+      </ul>
+    </details>
+  </li>
+</ul>
+
+```html
+<ul class="$$menu $$menu-paged $$menu-vertical lg:$$menu-horizontal bg-base-200 $$rounded-box w-56 lg:w-auto">
+  <li><a>Home</a></li>
+  <li><a>About</a></li>
+  <li>
+    <details>
+      <summary>Products</summary>
+      <ul>
+        <li><a>All products</a></li>
+        <li><a>Electronics</a></li>
+        <li><a>Clothing</a></li>
+      </ul>
+    </details>
+  </li>
 </ul>
 ```
 

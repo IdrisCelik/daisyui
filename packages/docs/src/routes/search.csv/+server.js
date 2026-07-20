@@ -41,7 +41,8 @@ export const prerender = true
 import { readFileSync, readdirSync, statSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "url"
-import { PUBLIC_DAISYUI_API_PATH } from "$env/static/public"
+import { serializeSearchCsv } from "$lib/searchCsv.js"
+import { getStoreProducts } from "$lib/server/content/store.js"
 import { load as loadYaml } from "js-yaml"
 
 const __filename = fileURLToPath(import.meta.url)
@@ -54,18 +55,28 @@ const markdownModules = import.meta.glob("../(routes)/**/*.md", {
   import: "default",
 })
 
-const initialSearchCSV = `daisyUI Components,/components/
-daisyUI Store,/store/
-Official daisyUI Figma Library,/store/daisyui-figma-library/
-Theme Generator,/theme-generator/
-daisyUI on Tailwind CSS Playground,/tailwindplay/
-daisyUI Blog,/blog/
-daisyUI Discord,/discord/
-daisyUI Swag Store,https://swag.daisyui.com/
-daisyUI GitHub,https://github.com/saadeghi/daisyui
-daisyUI Changelog,/docs/changelog/
-Blueprint MCP server,/blueprint/
-daisyUI llms.txt,/llms.txt`
+const initialSearchEntries = [
+  { title: "daisyUI Components", url: "/components/", classnames: "" },
+  { title: "daisyUI Store", url: "/store/", classnames: "" },
+  {
+    title: "Official daisyUI Figma Library",
+    url: "/store/daisyui-figma-library/",
+    classnames: "",
+  },
+  { title: "Theme Generator", url: "/theme-generator/", classnames: "" },
+  {
+    title: "daisyUI on Tailwind CSS Playground",
+    url: "/tailwindplay/",
+    classnames: "",
+  },
+  { title: "daisyUI Blog", url: "/blog/", classnames: "" },
+  { title: "daisyUI Discord", url: "/discord/", classnames: "" },
+  { title: "daisyUI Swag Store", url: "https://swag.daisyui.com/", classnames: "" },
+  { title: "daisyUI GitHub", url: "https://github.com/saadeghi/daisyui", classnames: "" },
+  { title: "daisyUI Changelog", url: "/docs/changelog/", classnames: "" },
+  { title: "Blueprint MCP server", url: "/blueprint/", classnames: "" },
+  { title: "daisyUI llms.txt", url: "/llms.txt", classnames: "" },
+]
 
 // List of paths to ignore (relative to routes directory)
 const IGNORED_PATHS = [
@@ -239,7 +250,13 @@ function extractH1Title(content) {
 }
 
 function getPageTitle(content, frontmatter) {
-  return frontmatter.title || frontmatter.desc || extractSeoTitle(content) || extractH1Title(content) || "Untitled"
+  return (
+    frontmatter.title ||
+    frontmatter.desc ||
+    extractSeoTitle(content) ||
+    extractH1Title(content) ||
+    "Untitled"
+  )
 }
 
 // Filter function to remove tilde (~) prefix
@@ -370,77 +387,20 @@ function filePathToUrl(filePath) {
   return url
 }
 
-// Function to escape CSV values
-function escapeCsvValue(value) {
-  // If value contains comma, newline, or quote, wrap in quotes and escape quotes
-  if (value.includes(",") || value.includes("\n") || value.includes('"')) {
-    return '"' + value.replace(/"/g, '""') + '"'
-  }
-  return value
-}
-
-// Function to fetch store data from external API
-async function fetchStoreData() {
-  try {
-    const response = await fetch(`${PUBLIC_DAISYUI_API_PATH}/data/store.yaml`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch store data: ${response.status}`)
-    }
-    const yamlText = await response.text()
-    return loadYaml(yamlText)
-  } catch (e) {
-    console.error(`Error loading store data`, e)
-    return null
-  }
-}
-
-// Function to fetch individual product data
-async function fetchProduct(id) {
-  try {
-    const response = await fetch(`${PUBLIC_DAISYUI_API_PATH}/data/store/${id}.yaml`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch product ${id}: ${response.status}`)
-    }
-    const yamlText = await response.text()
-    return loadYaml(yamlText)
-  } catch (e) {
-    console.error(`Error loading product ${id}`, e)
-    return null
-  }
-}
-
 // Function to generate store page CSV entries
 async function generateStoreEntries() {
-  const csvRows = []
+  const products = await getStoreProducts()
 
-  try {
-    const storeData = await fetchStoreData()
-    if (!storeData || !storeData.productOrder) {
-      console.warn("No store data or product order found")
-      return csvRows
-    }
-
-    // Add main store page
-    csvRows.push(`${escapeCsvValue("Store")},${escapeCsvValue("/store/")}`)
-
-    // Add individual product pages
-    for (const productId of storeData.productOrder) {
-      try {
-        const product = await fetchProduct(productId)
-        if (product && product.title) {
-          const productUrl = `/store/${productId}/`
-          csvRows.push(`${escapeCsvValue(product.title)},${escapeCsvValue(productUrl)}`)
-        }
-      } catch (productError) {
-        console.error(`Error processing product ${productId}:`, productError)
-        // Continue processing other products
-      }
-    }
-  } catch (error) {
-    console.error("Error generating store entries:", error)
-  }
-
-  return csvRows
+  return [
+    { title: "Store", url: "/store/", classnames: "" },
+    ...products
+      .filter((product) => product.title)
+      .map((product) => ({
+        title: product.title,
+        url: `/store/${product._key}/`,
+        classnames: "",
+      })),
+  ]
 }
 
 export async function GET() {
@@ -448,16 +408,11 @@ export async function GET() {
     // Get all markdown files using the hybrid approach
     const markdownFilesList = getAllMarkdownFiles()
 
-    const csvRows = []
     const pageEntries = []
     const headingEntries = []
 
-    // Add CSV header
-    csvRows.push("title,url,classnames")
-
     // Add store entries first
     const storeEntries = await generateStoreEntries()
-    csvRows.push(...storeEntries)
 
     // First pass: collect all page entries
     for (const file of markdownFilesList) {
@@ -510,9 +465,7 @@ export async function GET() {
         const classnamesStr = classnamesArr.join(" ").replace(/\s+/g, " ").trim()
 
         // Add page entry
-        pageEntries.push(
-          `${escapeCsvValue(title)},${escapeCsvValue(url)},${escapeCsvValue(classnamesStr)}`,
-        )
+        pageEntries.push({ title, url, classnames: classnamesStr })
       } catch (fileError) {
         console.error(`Error processing file ${file.path}:`, fileError)
         // Continue processing other files
@@ -528,9 +481,11 @@ export async function GET() {
 
         // Add heading entries (no classnames)
         headings.forEach((heading) => {
-          headingEntries.push(
-            `${escapeCsvValue(heading.title)},${escapeCsvValue(url)}#${heading.anchor},`,
-          )
+          headingEntries.push({
+            title: heading.title,
+            url: `${url}#${heading.anchor}`,
+            classnames: "",
+          })
         })
       } catch (fileError) {
         console.error(`Error processing file ${file.path}:`, fileError)
@@ -538,15 +493,12 @@ export async function GET() {
       }
     }
 
-    // Add all page entries first (higher priority)
-    csvRows.push(...pageEntries)
-
-    // Remove separate classnames rows (now included in page/headings)
-
-    // Then add all heading entries (lower priority)
-    csvRows.push(...headingEntries)
-
-    const csvContent = initialSearchCSV + "\n" + csvRows.join("\n")
+    const csvContent = serializeSearchCsv([
+      ...initialSearchEntries,
+      ...storeEntries,
+      ...pageEntries,
+      ...headingEntries,
+    ])
 
     return new Response(csvContent, {
       headers: {

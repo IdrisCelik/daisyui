@@ -3,31 +3,263 @@
   import SEO from "$components/SEO.svelte"
   import StoreFooter from "$components/StoreFooter.svelte"
   import Countdown from "svelte-countdown"
-  import { fade } from "svelte/transition"
+  import { onMount, tick } from "svelte"
+  import { fade, fly } from "svelte/transition"
   import { t } from "$lib/i18n.svelte.js"
 
-  let dialogs = $state({})
+  // Dynamic card copy also appears in an excluded blog route; keep it registered here.
+  // $t("Installing daisyUI")
 
-  $effect(() => {
-    const handleHash = () => {
-      const hash = window.location.hash.slice(1)
-      const dialog = dialogs[hash]
-      if (dialog && !dialog.open) {
-        dialog.showModal()
-      }
-    }
+  const checkoutUrl = "/blueprint/checkout/"
 
-    handleHash()
-    window.addEventListener("hashchange", handleHash)
+  const blueprintProductIds = [
+    "prod_7bSjj3UImBhfsYHclXQHt4",
+    "prod_4GWzcIFPubIXjTBvzo9pKA",
+    "prod_4EC2CMwyCoPAeJ6GhKabZd",
+  ]
 
-    return () => window.removeEventListener("hashchange", handleHash)
-  })
+  const expertRoles = [
+    {
+      number: "01",
+      icon: "https://img.daisyui.com/images/emoji/1280_mage_1f9d9.png",
+      name: "Setup Expert",
+      terminalName: "daisyUI Setup Expert",
+      requirement: "Mandatory",
+      output: "Installed daisyUI; added themes, icons, and fonts.",
+      description:
+        "Reads the repo first. It understands dependencies, framework, configuration, themes, colors, fonts, icons, and file structure before your agent changes a pixel.",
+      detail:
+        "Your agent gets the daisyUI install instructions, daisyUI config, and daisyUI custom theme setup when needed.",
+      cards: ["Installing daisyUI", "Adding custom theme, fonts and icons"],
+    },
+    {
+      number: "02",
+      icon: "https://img.daisyui.com/images/emoji/1040_woman-police-officer_1f46e-200d-2640-fe0f.png",
+      name: "Rules Enforcer",
+      terminalName: "daisyUI Rules Enforcer",
+      requirement: "Mandatory",
+      output: "53 implementation rules loaded.",
+      description:
+        "Loads implementation, syntax, accessibility, responsive, theme, media, and quality rules as requirements your LLM must follow.",
+      detail:
+        "The workflow cannot continue by skimming half a skill file and quietly dropping the difficult constraints.",
+      cards: ["Enforced design rules and code instructions"],
+    },
+    {
+      number: "03",
+      icon: "https://img.daisyui.com/images/emoji/0960_artist_1f9d1-200d-1f3a8.png",
+      name: "Creative Director",
+      terminalName: "daisyUI Creative Director",
+      requirement: "Creative direction",
+      output: "71 creative design principles loaded.",
+      description:
+        "Directs UX, content, originality, color, composition, typography, imagery, design trends, and motion as one coherent idea.",
+      detail:
+        "Instead of another purple-gradient template, the page gets a point of view connected to its product and audience.",
+      cards: [
+        "Applied creative design rules",
+        "Applied UI/UX principles",
+        "Applied an appropriate design trend",
+      ],
+    },
+    {
+      number: "04",
+      icon: "https://img.daisyui.com/images/emoji/0800_woman-teacher_1f469-200d-1f3eb.png",
+      name: "Page Architect",
+      terminalName: "daisyUI Page Architect",
+      requirement: "Architecture",
+      output: "Found 211 page architectures. Chose 'Mobile App Landing Page'.",
+      description:
+        "Chooses from 211 page architectures covering purpose, structure, content, goals, states, edge cases, and component composition.",
+      detail:
+        "Your LLM stops guessing what belongs on the page. It gets a production plan shaped around the job the page must do.",
+      cards: ["Accessing page architecture library", "Finding the best layout structure"],
+    },
+    {
+      number: "05",
+      icon: "https://img.daisyui.com/images/emoji/0880_technologist_1f9d1-200d-1f4bb.png",
+      name: "Component Syntax Expert",
+      terminalName: "daisyUI Component Syntax Expert",
+      requirement: "Mandatory",
+      output: "Found 68 daisyUI components and used 17 code snippets.",
+      description:
+        "Retrieves exact, correct daisyUI component structures, variants, code snippets, and examples only when the page needs them.",
+      detail:
+        "No stale syntax from model memory. No utility pile pretending to be a maintained component.",
+      cards: ["Received daisyUI components and rules", "Received code snippets and examples"],
+    },
+    {
+      number: "06",
+      icon: "https://img.daisyui.com/images/emoji/1040_detective_1f575-fe0f.png",
+      name: "Quality Inspector",
+      terminalName: "daisyUI Quality Inspector",
+      requirement: "Final gate",
+      output: "Passed: 100/100. Errors: 0.",
+      description:
+        "Audits the finished source for visual problems, syntax errors, accessibility issues, responsive failures, and ignored rules.",
+      detail:
+        "When the inspection finds a problem, your agent has to fix it before the workflow can call the page finished.",
+      cards: ["Fixed syntax issues", "Fixed visual design problems"],
+    },
+  ]
 
-  let compareTable = $state([
+  const codingTools = [
+    {
+      name: "Claude Code",
+      slug: "claude-code",
+      icon: "claude-code",
+      agent: "claude-code",
+    },
+    {
+      name: "Codex",
+      slug: "codex",
+      icon: "codex",
+      agent: "codex",
+    },
+    {
+      name: "Grok Build",
+      slug: "grok",
+      icon: "grok",
+      agent: "grok",
+    },
+    {
+      name: "VS Code Copilot",
+      slug: "copilot",
+      icon: "copilot",
+      agent: "github-copilot",
+    },
+    {
+      name: "Cursor",
+      slug: "cursor",
+      icon: "cursor",
+      agent: "cursor",
+    },
+    {
+      name: "OpenCode",
+      slug: "opencode",
+      icon: "opencode",
+      agent: "opencode",
+    },
+    {
+      name: "Antigravity",
+      slug: "antigravity",
+      icon: "antigravity",
+      agent: "antigravity",
+    },
+  ]
+
+  const blueprintPreviewBaseUrl = "https://img.daisyui.com/images/blueprint"
+  const blueprintPreviewPngUrl = (file) =>
+    `${blueprintPreviewBaseUrl}/lg/${file.replace(/\.avif$/, ".png")}`
+  const blueprintPreviews = [
+    {
+      file: "front-end-skill.avif",
+      alt: "Front-end skill",
+      prompt: "Make an admin dashboard for server management with Retro-Futurism style",
+      model: "GPT 5.6",
+    },
+    {
+      file: "ui-skills.avif",
+      alt: "UI skills",
+      prompt: "Make an email client UI with clean design",
+      model: "GPT 5.6",
+    },
+    {
+      file: "daisyui-skill.avif",
+      alt: "daisyUI skill",
+      prompt: "Make a dense Japanese news website with Maximalism style",
+      model: "GPT 5.6",
+    },
+    {
+      file: "ui-design-agent.avif",
+      alt: "UI design agent",
+      prompt: "Make a product management dashboard for managing SaaS businesses",
+      model: "GPT 5.6",
+    },
+    {
+      file: "design-website-with-codex.avif",
+      alt: "Design website with Codex",
+      prompt: "Make an online shop with Skeuomorphism design for selling gaming headphones",
+      model: "GPT 5.6",
+    },
+    {
+      file: "ai-site-maker.avif",
+      alt: "AI site maker",
+      prompt: "Make a landing page for a cute cafe in Seul",
+      model: "GPT 5.6",
+    },
+    {
+      file: "tailwind-css-skill.avif",
+      alt: "Tailwind CSS skill",
+      prompt: "Make an event website for a dev confrence in Tokyo",
+      model: "GPT 5.6",
+    },
+    {
+      file: "best-ui-design-skill.avif",
+      alt: "Best UI design skill",
+      prompt: "Make a Swiss design style landingpage for a nordic style furniture manifacturer",
+      model: "GPT 5.6",
+    },
+    {
+      file: "front-end-agent.avif",
+      alt: "Front-end agent",
+      prompt: "Make an artistic personal site for a photographer",
+      model: "GPT 5.6",
+    },
+  ]
+
+  const conversionTools = [
+    {
+      title: "Figma to daisyUI",
+      label: "Figma API",
+      description:
+        "Reads frames, hierarchy, auto layout, type, color, component instances, and a rendered preview before matching daisyUI patterns.",
+      toolName: "Works with Figma API",
+      input: "Figma / Checkout / Payment form",
+      output: "daisyUI / card + fieldset + input + button",
+    },
+    {
+      title: "Tailwind CSS to daisyUI",
+      label: "Utility audit",
+      description:
+        "Preserves layout and behavior while replacing hand-built component utility stacks with current daisyUI structures.",
+      toolName: "daisyui_prompt_tailwind_to_daisyui",
+      input: "27 utilities / custom card pattern",
+      output: "daisyUI / card card-border",
+    },
+    {
+      title: "Screenshot to daisyUI",
+      label: "Visual reference",
+      description:
+        "Analyzes hierarchy, density, states, and responsive clues, then rebuilds the reference with accessible daisyUI components.",
+      toolName: "daisyui_prompt_screenshot_to_daisyui",
+      input: "Screenshot / Settings / 1440 × 1024",
+      output: "daisyUI / responsive settings page",
+    },
+    {
+      title: "Bootstrap to daisyUI",
+      label: "Framework migration",
+      description:
+        "Maps Bootstrap components to daisyUI while keeping the content, semantics, structure, and interaction model intact.",
+      toolName: "daisyui_prompt_bootstrap_to_daisyui",
+      input: "Bootstrap / .card .btn .form-control",
+      output: "daisyUI / card btn input",
+    },
+    {
+      title: "Image to daisyUI theme",
+      label: "Palette mapping",
+      description:
+        "Extracts an image palette, assigns semantic roles, calculates readable content colors, and generates every required daisyUI theme variable.",
+      input: "Image / color palette",
+      output: "daisyUI / complete semantic theme",
+    },
+  ]
+
+  const compareTable = [
     [
       "",
-      "daisyUI <div class='-my-1 inline-grid grid-cols-[.25rem_1fr_.25rem] grid-rows-[.25rem_1fr_.25rem] align-middle'><div class='border-s-1 border-t-1 border-blue-600 [grid-area:1/1/2/2]'></div> <div class='border-e-1 border-t-1 border-blue-600 [grid-area:1/3/2/4]'></div> <div class='border-s-1 border-b-1 border-blue-600 [grid-area:3/1/4/2]'></div> <div class='border-e-1 border-b-1 border-blue-600 [grid-area:3/3/4/4]'></div> <div class='font-title m-0.5 bg-blue-600 px-1 text-sm font-semibold tracking-wide text-white [grid-area:1/1/4/4]'>BLUEPRINT</div></div> MCP",
-      "daisyUI llms.txt",
+      "daisyUI <div class='-my-1 inline-grid grid-cols-[.25rem_1fr_.25rem] grid-rows-[.25rem_1fr_.25rem] align-middle'><div class='border-s border-t border-blue-600 [grid-area:1/1/2/2]'></div><div class='border-e border-t border-blue-600 [grid-area:1/3/2/4]'></div><div class='border-s border-b border-blue-600 [grid-area:3/1/4/2]'></div><div class='border-e border-b border-blue-600 [grid-area:3/3/4/4]'></div><div class='font-title m-0.5 bg-blue-600 px-1 text-sm font-semibold tracking-wide text-white [grid-area:1/1/4/4]'>BLUEPRINT</div></div> MCP",
+      "daisyUI Skill",
       "Context7 MCP",
       "GitMCP",
     ],
@@ -43,8 +275,8 @@
       "Data source",
       "<span class='text-success'>Authored & verified</span>",
       "<span class='text-success'>Authored & verified</span>",
-      "<span class='text-error'>AI generated</span>",
-      "<span class='text-error'>AI generated</span>",
+      "<span class='text-error'>AI-generated</span>",
+      "<span class='text-error'>AI-generated</span>",
     ],
     [
       "Resource accuracy",
@@ -60,7 +292,12 @@
       "<span class='text-error'>Yes</span>",
       "<span class='text-error'>Yes</span>",
     ],
-    ["daisyUI Design system specs", true, false, false, false],
+    ["Creative direction", true, false, false, false],
+    ["211 page architectures", true, false, false, false],
+    ["Design trends catalog", true, false, false, false],
+    ["Code snippets", true, false, false, false],
+    ["Quality inspection", true, false, false, false],
+    ["daisyUI design system specs", true, true, false, false],
     ["Converts Figma to daisyUI", true, false, false, false],
     ["Converts Tailwind CSS to daisyUI", true, false, false, false],
     ["Converts Bootstrap to daisyUI", true, false, false, false],
@@ -69,14 +306,14 @@
     [
       "Generates AI slop",
       "<span class='text-success'>Less likely</span>",
-      "<span class='text-error'>depends on the LLM</span>",
+      "<span class='text-error'>Depends on the LLM</span>",
       "<span class='text-error'>More likely</span>",
       "<span class='text-error'>More likely</span>",
     ],
     [
       "Updates",
-      "<span class='text-success'>100% Synced with daisyUI</span>",
-      "<span class='text-success'>100% Synced with daisyUI</span>",
+      "<span class='text-success'>Synced with daisyUI</span>",
+      "<span class='text-success'>Synced with daisyUI</span>",
       "<span class='text-error'>Depends on a crawler</span>",
       "<span class='text-error'>Depends on a crawler</span>",
     ],
@@ -84,17 +321,67 @@
       "Token usage efficiency",
       "<span class='text-success'>Super efficient</span>",
       "<span class='text-error'>Not efficient</span>",
-      "<span class='text-error'>Wastes token on useless context</span>",
-      "<span class='text-error'>Wastes token on useless context</span>",
+      "<span class='text-error'>Wastes tokens on unrelated context</span>",
+      "<span class='text-error'>Wastes tokens on unrelated context</span>",
     ],
-  ])
+  ]
 
-  const checkoutUrl = "/blueprint/checkout/"
-
-  const blueprintProductIds = [
-    "prod_7bSjj3UImBhfsYHclXQHt4",
-    "prod_4GWzcIFPubIXjTBvzo9pKA",
-    "prod_4EC2CMwyCoPAeJ6GhKabZd",
+  const faqItems = [
+    {
+      question: "Is this a one-time payment or a subscription?",
+      answer:
+        "Both are possible. You can purchase a monthly license, yearly license, or lifetime license.",
+    },
+    {
+      question: "What happens after I pay?",
+      answer:
+        "You will receive an email with a license key that you can use to activate the MCP server. If you don't see the email, check your spam folder.",
+    },
+    {
+      question: "Will I receive updates?",
+      answer:
+        "Yes. Blueprint is updated automatically with the latest version of daisyUI. New MCP tools, resources, and prompts are added automatically.",
+    },
+    {
+      question: "Do I get customer support?",
+      answer:
+        "We offer support via Discord. Join the daisyUI Discord and ask your questions there.",
+      href: "https://daisyui.com/discord",
+      linkLabel: "Open Discord",
+    },
+    {
+      question: "Can I cancel my subscription?",
+      answer:
+        "Yes. You can cancel at any time from the order portal. You will keep access until the end of your billing cycle.",
+      href: "https://www.creem.io/my-orders/login",
+      linkLabel: "Manage orders",
+    },
+    {
+      question: "Can I get a refund?",
+      answer:
+        "Digital products are not refundable. If there was a payment mistake, such as a duplicate payment, email us and we will help resolve it.",
+      href: "mailto:help@daisyui.com",
+      linkLabel: "Email help@daisyui.com",
+    },
+    {
+      question: "I didn't receive the email",
+      answer: "Check your spam folder first. If you still can't find it, email help@daisyui.com.",
+      href: "mailto:help@daisyui.com",
+      linkLabel: "Email support",
+    },
+    {
+      question: "I bought the wrong package",
+      answer: "Email help@daisyui.com and we will help you get the right package.",
+      href: "mailto:help@daisyui.com",
+      linkLabel: "Email support",
+    },
+    {
+      question: "There was an issue with the payment",
+      answer:
+        "If the payment failed and you did not receive the product, try again. If money was deducted, it is usually refunded automatically within one or two weeks. Email help@daisyui.com if the issue persists.",
+      href: "mailto:help@daisyui.com",
+      linkLabel: "Email support",
+    },
   ]
 
   const dateFormat = {
@@ -106,7 +393,42 @@
     second: "2-digit",
   }
 
+  let discountDialog = $state()
   let isClipboardButtonPressed = $state(false)
+  let currentDate = $state(new Date().toISOString())
+  let enhanced = $state(false)
+  let pageReady = $state(false)
+  let reducedMotion = $state(false)
+  let blueprintCarouselIndex = $state(0)
+  let blueprintCarouselTargetIndex = $state(0)
+  let blueprintCarouselPromptIndex = $state(0)
+  let blueprintCarouselDirection = $state(1)
+  let blueprintTypedPrompt = $state(blueprintPreviews[0].prompt)
+  let blueprintPromptTyping = $state(false)
+  let showTrialBar = $state(false)
+  let toolProgress = $state(expertRoles.map(() => 0))
+  let toolCardMotion = $state(
+    expertRoles.map((role) => role.cards.map(() => ({ opacity: 0, translateY: 16, scale: 0.9 }))),
+  )
+  let floatingOrientations = $state(expertRoles.map((_, index) => index % 2 === 1))
+  let toolCardEnteredAt = expertRoles.map(() => null)
+  let visibleSections = $state([])
+  let toolNodes = []
+  let toolFrame
+  let trackedToolCount = 0
+  let blueprintTypingInterval
+  let blueprintCarouselQueue = []
+  let blueprintCarouselCard
+  let blueprintCarouselAnimation
+  let blueprintCarouselAnimationDuration = 800
+  let blueprintCarouselProcessing = false
+  let blueprintCarouselBurstDuration = 800
+  let blueprintCarouselDestroyed = false
+  let blueprintCarouselAutoplayTimeout
+  let blueprintCarouselHoverCount = 0
+  let blueprintCarouselOnScreen = false
+  let resetBlueprintPreviewImage = () => {}
+
   const copyText = (text) => {
     navigator.clipboard.writeText(text)
     isClipboardButtonPressed = true
@@ -115,121 +437,689 @@
     }, 2000)
   }
 
-  let currentDate = $state(new Date().toISOString())
+  const markVisible = (id) => {
+    if (!visibleSections.includes(id)) {
+      visibleSections = [...visibleSections, id]
+    }
+  }
+
+  const revealOnScroll = (node, id) => {
+    if (!("IntersectionObserver" in window)) {
+      markVisible(id)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          markVisible(id)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
+    )
+
+    observer.observe(node)
+    return {
+      destroy() {
+        observer.disconnect()
+      },
+    }
+  }
+
+  const typedToolCall = (role, index) => {
+    const characters = Array.from(`Called ${role.terminalName}`)
+    return characters.slice(0, Math.ceil(characters.length * toolProgress[index])).join("")
+  }
+
+  const floatingCardPosition = (roleIndex, cardIndex) => {
+    const cardCount = expertRoles[roleIndex].cards.length
+    const reversed = floatingOrientations[roleIndex]
+
+    if (cardCount === 1) return reversed ? "middle-right" : "middle-left"
+    if (roleIndex === 0 && cardCount === 2) {
+      return ["top-right", "bottom-left"][cardIndex]
+    }
+    if (cardCount === 2) {
+      return (reversed ? ["top-right", "bottom-left"] : ["top-left", "bottom-right"])[cardIndex]
+    }
+
+    return (
+      reversed
+        ? ["top-right", "middle-left", "bottom-right"]
+        : ["top-left", "middle-right", "bottom-left"]
+    )[cardIndex]
+  }
+
+  const updateToolScroll = (timestamp = performance.now()) => {
+    toolFrame = undefined
+    const viewportHeight = window.innerHeight
+    let continueCardReveal = false
+    const nextToolCardMotion = expertRoles.map((role) =>
+      role.cards.map(() => ({
+        opacity: 0,
+        translateY: 16,
+        scale: 0.9,
+      })),
+    )
+
+    toolNodes.forEach((node, index) => {
+      if (!node) return
+
+      const rect = node.getBoundingClientRect()
+      const start = viewportHeight - rect.height / 2
+      const finish = viewportHeight / 2 - rect.height / 2
+      const progress = reducedMotion
+        ? Number(rect.top <= finish)
+        : Math.min(1, Math.max(0, (start - rect.top) / (start - finish)))
+
+      toolProgress[index] = progress
+
+      const articleCenter = rect.top + rect.height / 2
+      const scrollPosition = Math.min(
+        1,
+        Math.max(-1, (articleCenter - viewportHeight / 2) / Math.max(rect.height / 2, 1)),
+      )
+      const fadeDistance = 1 / 3
+      const rawOpacity = Math.min(1, Math.max(0, (1 - Math.abs(scrollPosition)) / fadeDistance))
+      const scrollOpacity = reducedMotion ? Number(rawOpacity >= 0.5) : rawOpacity
+
+      if (scrollOpacity > 0 && toolCardEnteredAt[index] === null) {
+        toolCardEnteredAt[index] = timestamp
+      } else if (scrollOpacity === 0) {
+        toolCardEnteredAt[index] = null
+      }
+
+      const elapsed = toolCardEnteredAt[index] === null ? 0 : timestamp - toolCardEnteredAt[index]
+
+      nextToolCardMotion[index] = expertRoles[index].cards.map((_, cardIndex) => {
+        const delay = cardIndex * 300
+        const reveal = reducedMotion ? 1 : Math.min(1, Math.max(0, (elapsed - delay) / 100))
+
+        if (!reducedMotion && scrollOpacity > 0 && elapsed < delay + 100) {
+          continueCardReveal = true
+        }
+
+        const opacity = scrollOpacity * reveal
+        const direction = scrollPosition < 0 ? -1 : 1
+
+        return {
+          opacity,
+          translateY: reducedMotion ? 0 : direction * (1 - opacity) * 16,
+          scale: reducedMotion ? 1 : 0.9 + opacity * 0.1,
+        }
+      })
+    })
+
+    toolCardMotion = nextToolCardMotion
+
+    if (continueCardReveal) {
+      toolFrame = requestAnimationFrame(updateToolScroll)
+    }
+  }
+
+  const scheduleToolScroll = () => {
+    if (toolFrame) return
+    toolFrame = requestAnimationFrame(updateToolScroll)
+  }
+
+  const trackTool = (node, index) => {
+    toolNodes[index] = node
+    trackedToolCount += 1
+
+    if (trackedToolCount === 1) {
+      window.addEventListener("scroll", scheduleToolScroll, { passive: true })
+      window.addEventListener("resize", scheduleToolScroll)
+    }
+
+    scheduleToolScroll()
+
+    return {
+      destroy() {
+        toolNodes[index] = undefined
+        trackedToolCount -= 1
+
+        if (trackedToolCount === 0) {
+          window.removeEventListener("scroll", scheduleToolScroll)
+          window.removeEventListener("resize", scheduleToolScroll)
+          if (toolFrame) cancelAnimationFrame(toolFrame)
+        }
+      },
+    }
+  }
+
+  const trackHero = (node) => {
+    if (!("IntersectionObserver" in window)) return
+
+    const observer = new IntersectionObserver(([entry]) => {
+      showTrialBar = !entry.isIntersecting && node.getBoundingClientRect().bottom < 0
+    })
+
+    observer.observe(node)
+    return {
+      destroy() {
+        observer.disconnect()
+      },
+    }
+  }
+
+  const wrapBlueprintPreviewIndex = (index) =>
+    (index + blueprintPreviews.length) % blueprintPreviews.length
+
+  const panBlueprintPreviewImage = (node) => {
+    const frame = node.parentElement
+    const pixelsPerSecond = 200
+    let animation
+    let hovered = false
+    let resizeObserver
+    let updateFrame
+
+    const currentOffset = () => {
+      const transform = getComputedStyle(node).transform
+      if (transform === "none") return 0
+
+      try {
+        return new DOMMatrixReadOnly(transform).m42
+      } catch {
+        const matrixValues = transform.match(/^matrix\((.+)\)$/)?.[1].split(",")
+        return Number(matrixValues?.[5]) || 0
+      }
+    }
+
+    const stopAtCurrentOffset = () => {
+      const offset = currentOffset()
+      animation?.cancel()
+      animation = undefined
+      node.style.transform = `translateY(${offset}px)`
+      return offset
+    }
+
+    const resetToTop = () => {
+      if (updateFrame) cancelAnimationFrame(updateFrame)
+      updateFrame = undefined
+      animation?.cancel()
+      animation = undefined
+      node.style.transform = "translateY(0px)"
+    }
+
+    const animateTo = (targetOffset) => {
+      const startOffset = stopAtCurrentOffset()
+      const distance = Math.abs(targetOffset - startOffset)
+      const returningToTop = targetOffset === 0 && startOffset < -0.5
+      const speed = returningToTop ? pixelsPerSecond * 4 : pixelsPerSecond
+
+      if (distance < 0.5 || reducedMotion || !node.animate) {
+        node.style.transform = `translateY(${reducedMotion ? 0 : targetOffset}px)`
+        return
+      }
+
+      const nextAnimation = node.animate(
+        [
+          { transform: `translateY(${startOffset}px)` },
+          { transform: `translateY(${targetOffset}px)` },
+        ],
+        {
+          duration: (distance / speed) * 1000,
+          easing: returningToTop ? "ease-out" : "linear",
+          fill: "forwards",
+        },
+      )
+      animation = nextAnimation
+
+      nextAnimation.finished
+        .then(() => {
+          if (animation !== nextAnimation) return
+          node.style.transform = `translateY(${targetOffset}px)`
+          nextAnimation.cancel()
+          animation = undefined
+        })
+        .catch(() => {})
+    }
+
+    const updatePosition = () => {
+      updateFrame = undefined
+      const overflow = Math.max(0, node.getBoundingClientRect().height - frame.clientHeight)
+      animateTo(hovered && overflow > 0.5 ? -overflow : 0)
+    }
+
+    const schedulePositionUpdate = () => {
+      if (updateFrame) cancelAnimationFrame(updateFrame)
+      updateFrame = requestAnimationFrame(updatePosition)
+    }
+
+    const handlePointerEnter = () => {
+      hovered = true
+      schedulePositionUpdate()
+    }
+
+    const handlePointerLeave = () => {
+      hovered = false
+      schedulePositionUpdate()
+    }
+
+    const handleLoad = () => {
+      resetToTop()
+      schedulePositionUpdate()
+    }
+
+    resetBlueprintPreviewImage = resetToTop
+
+    node.addEventListener("pointerenter", handlePointerEnter)
+    node.addEventListener("pointerleave", handlePointerLeave)
+    node.addEventListener("load", handleLoad)
+
+    if ("ResizeObserver" in window) {
+      resizeObserver = new ResizeObserver(schedulePositionUpdate)
+      resizeObserver.observe(frame)
+      resizeObserver.observe(node)
+    }
+
+    schedulePositionUpdate()
+
+    return {
+      destroy() {
+        node.removeEventListener("pointerenter", handlePointerEnter)
+        node.removeEventListener("pointerleave", handlePointerLeave)
+        node.removeEventListener("load", handleLoad)
+        resizeObserver?.disconnect()
+        if (updateFrame) cancelAnimationFrame(updateFrame)
+        animation?.cancel()
+        node.style.removeProperty("transform")
+        if (resetBlueprintPreviewImage === resetToTop) resetBlueprintPreviewImage = () => {}
+      },
+    }
+  }
+
+  const typeBlueprintPrompt = (prompt) => {
+    if (blueprintTypingInterval) clearInterval(blueprintTypingInterval)
+
+    if (reducedMotion) {
+      blueprintTypedPrompt = prompt
+      blueprintPromptTyping = false
+      return
+    }
+
+    const characters = Array.from(prompt)
+    let characterIndex = 0
+    blueprintTypedPrompt = ""
+    blueprintPromptTyping = true
+
+    blueprintTypingInterval = setInterval(() => {
+      characterIndex += 1
+      blueprintTypedPrompt = characters.slice(0, characterIndex).join("")
+
+      if (characterIndex >= characters.length) {
+        clearInterval(blueprintTypingInterval)
+        blueprintTypingInterval = undefined
+        blueprintPromptTyping = false
+      }
+    }, 18)
+  }
+
+  const clearBlueprintCarouselAutoplay = () => {
+    if (blueprintCarouselAutoplayTimeout) clearTimeout(blueprintCarouselAutoplayTimeout)
+    blueprintCarouselAutoplayTimeout = undefined
+  }
+
+  const scheduleBlueprintCarouselAutoplay = () => {
+    clearBlueprintCarouselAutoplay()
+    if (blueprintCarouselDestroyed || blueprintCarouselHoverCount > 0 || !blueprintCarouselOnScreen)
+      return
+
+    blueprintCarouselAutoplayTimeout = setTimeout(() => {
+      blueprintCarouselAutoplayTimeout = undefined
+      if (!blueprintCarouselOnScreen || blueprintCarouselHoverCount > 0) return
+      changeBlueprintPreview(1)
+    }, 3000)
+  }
+
+  const pauseBlueprintCarouselAutoplay = () => {
+    blueprintCarouselHoverCount += 1
+    clearBlueprintCarouselAutoplay()
+  }
+
+  const resumeBlueprintCarouselAutoplay = () => {
+    blueprintCarouselHoverCount = Math.max(0, blueprintCarouselHoverCount - 1)
+    if (blueprintCarouselHoverCount === 0) scheduleBlueprintCarouselAutoplay()
+  }
+
+  const trackBlueprintCarouselVisibility = (node) => {
+    if (!("IntersectionObserver" in window)) {
+      blueprintCarouselOnScreen = true
+      scheduleBlueprintCarouselAutoplay()
+      return
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      blueprintCarouselOnScreen = entry.isIntersecting
+
+      if (blueprintCarouselOnScreen) {
+        scheduleBlueprintCarouselAutoplay()
+      } else {
+        clearBlueprintCarouselAutoplay()
+      }
+    })
+
+    observer.observe(node)
+
+    return {
+      destroy() {
+        observer.disconnect()
+        blueprintCarouselOnScreen = false
+        clearBlueprintCarouselAutoplay()
+      },
+    }
+  }
+
+  const runBlueprintCarouselFlip = async (direction) => {
+    resetBlueprintPreviewImage()
+    const targetIndex = wrapBlueprintPreviewIndex(blueprintCarouselIndex + direction)
+    blueprintCarouselDirection = direction
+    blueprintCarouselTargetIndex = targetIndex
+    blueprintCarouselPromptIndex = targetIndex
+    typeBlueprintPrompt(blueprintPreviews[targetIndex].prompt)
+    await tick()
+
+    if (reducedMotion || !blueprintCarouselCard?.animate) {
+      blueprintCarouselIndex = targetIndex
+      return true
+    }
+
+    const angle = direction * -180
+    blueprintCarouselAnimationDuration = blueprintCarouselBurstDuration
+    const animation = blueprintCarouselCard.animate(
+      [
+        { transform: "translate3d(0, 0, 0) rotateY(0deg)" },
+        { transform: `translate3d(0, 0, 0) rotateY(${angle}deg)` },
+      ],
+      {
+        duration: blueprintCarouselAnimationDuration,
+        easing:
+          "linear(0, 0.057 4%, 0.19 8%, 0.36 12%, 0.53 16%, 0.68 20%, 0.8 24%, 0.89 28%, 0.95 32%, 0.987 38%, 1.008 44%, 1.018 52%, 1.015 58%, 1.008 64%, 1 70%, 0.995 76%, 0.994 80%, 0.995 85%, 0.997 90%, 0.999 96%, 1)",
+        fill: "forwards",
+      },
+    )
+    blueprintCarouselAnimation = animation
+
+    try {
+      await animation.finished
+    } catch {
+      if (blueprintCarouselDestroyed) return false
+    }
+
+    if (blueprintCarouselDestroyed) return false
+
+    blueprintCarouselIndex = targetIndex
+    await tick()
+    animation.cancel()
+    if (blueprintCarouselAnimation === animation) blueprintCarouselAnimation = undefined
+    return true
+  }
+
+  const processBlueprintCarouselQueue = async () => {
+    if (blueprintCarouselProcessing) return
+    blueprintCarouselProcessing = true
+
+    while (blueprintCarouselQueue.length && !blueprintCarouselDestroyed) {
+      const direction = blueprintCarouselQueue.shift()
+      const completed = await runBlueprintCarouselFlip(direction)
+      if (!completed) break
+    }
+
+    blueprintCarouselProcessing = false
+    blueprintCarouselBurstDuration = 800
+    scheduleBlueprintCarouselAutoplay()
+  }
+
+  const changeBlueprintPreview = (direction) => {
+    clearBlueprintCarouselAutoplay()
+    blueprintCarouselQueue.push(direction)
+
+    if (blueprintCarouselProcessing) {
+      blueprintCarouselBurstDuration = Math.max(120, blueprintCarouselBurstDuration - 80)
+      if (blueprintCarouselAnimation) {
+        blueprintCarouselAnimation.playbackRate = Math.max(
+          blueprintCarouselAnimation.playbackRate,
+          blueprintCarouselAnimationDuration / blueprintCarouselBurstDuration,
+        )
+      }
+    }
+
+    processBlueprintCarouselQueue()
+  }
+
+  onMount(() => {
+    enhanced = true
+    blueprintCarouselDestroyed = false
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const updateMotionPreference = () => {
+      reducedMotion = mediaQuery.matches
+      scheduleToolScroll()
+
+      if (reducedMotion) {
+        if (blueprintTypingInterval) clearInterval(blueprintTypingInterval)
+        blueprintTypingInterval = undefined
+        blueprintTypedPrompt = blueprintPreviews[blueprintCarouselPromptIndex].prompt
+        blueprintPromptTyping = false
+        blueprintCarouselAnimation?.finish()
+      }
+    }
+    const frame = requestAnimationFrame(() => {
+      pageReady = true
+    })
+
+    const firstOrientation = Math.random() >= 0.5
+    floatingOrientations = expertRoles.map((_, index) =>
+      index % 2 === 0 ? firstOrientation : !firstOrientation,
+    )
+
+    updateMotionPreference()
+    mediaQuery.addEventListener("change", updateMotionPreference)
+    blueprintPreviews.forEach((preview) => {
+      const previewImage = new Image()
+      previewImage.src = `${blueprintPreviewBaseUrl}/sm/${preview.file}?`
+    })
+    scheduleBlueprintCarouselAutoplay()
+
+    return () => {
+      cancelAnimationFrame(frame)
+      mediaQuery.removeEventListener("change", updateMotionPreference)
+      if (blueprintTypingInterval) clearInterval(blueprintTypingInterval)
+      blueprintCarouselDestroyed = true
+      blueprintCarouselQueue = []
+      clearBlueprintCarouselAutoplay()
+      blueprintCarouselAnimation?.cancel()
+    }
+  })
+
   $effect(() => {
     const interval = setInterval(() => {
       currentDate = new Date().toISOString()
     }, 1000)
+
     return () => clearInterval(interval)
   })
 
   const isDiscountValid = (discount) => {
-    if (discount.data?.attributes.expires_at) {
-      const expiresAt = new Date(discount.data.attributes.expires_at).toISOString()
-      const currentDate = new Date().toISOString()
-      return expiresAt > currentDate
-    }
-    return false
+    const expiresAt = discount?.data?.attributes?.expires_at
+    return Boolean(expiresAt && new Date(expiresAt).toISOString() > currentDate)
   }
 
-  function isDiscountApplicableToBlueprint(discount) {
+  const isDiscountApplicableToBlueprint = (discount) => {
     const appliesTo = discount?.data?.attributes?.applies_to_products
     if (!appliesTo?.length) return true
     return appliesTo.some((id) => blueprintProductIds.includes(id))
   }
 
   const fetchDiscount = (async () => {
-    const [shorttimeDiscountResponse, specialDiscountResponse] = await Promise.all([
-      fetch(`${PUBLIC_DAISYUI_API_PATH}/api/discount_shorttime.json`),
-      fetch(`${PUBLIC_DAISYUI_API_PATH}/api/discount_special.json`),
-    ])
+    try {
+      const [shorttimeDiscountResponse, specialDiscountResponse] = await Promise.all([
+        fetch(PUBLIC_DAISYUI_API_PATH + "/api/discount_shorttime.json"),
+        fetch(PUBLIC_DAISYUI_API_PATH + "/api/discount_special.json"),
+      ])
 
-    const shorttimeDiscount = await shorttimeDiscountResponse.json()
-    const specialDiscount = await specialDiscountResponse.json()
+      const shorttimeDiscount = await shorttimeDiscountResponse.json()
+      const specialDiscount = await specialDiscountResponse.json()
 
-    if (isDiscountValid(specialDiscount)) {
-      return specialDiscount
-    }
-
-    if (isDiscountValid(shorttimeDiscount)) {
-      return shorttimeDiscount
+      if (isDiscountValid(specialDiscount)) return specialDiscount
+      if (isDiscountValid(shorttimeDiscount)) return shorttimeDiscount
+    } catch {
+      return null
     }
 
     return null
   })()
-
-  const code = `<body class="flex min-h-screen items-center justify-center bg-base-200">
-    <div class="card w-96 bg-base-100 card-border">
-      <div class="card-body">
-        <h2 class="mb-4 card-title text-2xl font-bold">Login</h2>
-
-        <form>
-          <!-- Email Input -->
-          <div class="mb-4">
-            <label class="mb-2 block text-sm font-medium">Email</label>
-            <input type="email" class="validator input input-md w-full"
-              placeholder="mail@site.com" required />
-            <div class="validator-hint hidden text-sm">Please enter a valid email address</div>
-          </div>
-
-          <!-- Password Input -->
-          <div class="mb-4">
-            <label class="mb-2 block text-sm font-medium">Password</label>
-            <input type="password" class="validator input input-md w-full"
-              placeholder="Enter your password" required minlength="8" />
-            <div class="validator-hint hidden text-sm">Password must be at least 8 characters</div>
-          </div>
-
-          <!-- Remember Me & Forgot Password -->
-          <div class="mb-6 flex items-center justify-between">
-            <label class="flex cursor-pointer items-center gap-2">
-              <input type="checkbox" class="checkbox checkbox-sm" />
-              <span class="text-sm">Remember me</span>
-            </label>
-            <a href="#" class="link text-sm link-hover">Forgot password?</a>
-          </div>
-
-          <!-- Submit Button -->
-          <div class="card-actions">
-            <button type="submit" class="btn btn-block">Login</button>
-          </div>
-        </form>
-
-        <!-- Sign up link -->
-        <div class="mt-4 text-center">
-          <span class="text-sm">Don't have an account? </span>
-          <a href="#" class="link text-sm link-hover">Sign up</a>
-        </div>
-      </div>
-    </div>
-  </body>
-`
 </script>
 
 <SEO
-  title="daisyUI and Tailwind CSS {$t('MCP server')}"
+  title="daisyUI Blueprint 1.5 | Official daisyUI MCP server"
   formatTitle={false}
-  desc="daisyUI and Tailwind CSS {$t(
-    'MCP server',
-  )} to generate Tailwind CSS code, Convert Figma to Tailwind CSS"
+  desc="Give your AI agent page architecture, creative direction, exact daisyUI component syntax, and a final quality inspection with daisyUI Blueprint 1.5."
   img="https://img.daisyui.com/images/blueprint.webp"
 />
 
-<svelte:head>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Fuzzy+Bubbles:wght@700&display=swap"
-    rel="stylesheet"
-  />
-</svelte:head>
+{#snippet keyIcon()}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="size-5"
+    aria-hidden="true"
+  >
+    <circle cx="7.5" cy="15.5" r="4.5"></circle>
+    <path d="m10.7 12.3 8.8-8.8M15 8l2 2M17.5 5.5l2 2"></path>
+  </svg>
+{/snippet}
 
-<div class="w-full px-4 pt-20 md:px-20!">
-  {#await fetchDiscount then discount}
-    {#if discount?.data.attributes.expires_at && new Date(discount?.data.attributes.expires_at).toISOString() > currentDate && isDiscountApplicableToBlueprint(discount)}
-      <div class="fixed inset-e-2 bottom-2 z-20 max-lg:hidden">
-        <button
-          class="btn btn-sm btn-neutral h-auto max-h-none flex-col py-2"
-          onclick={() => dialogs.discount.showModal()}
-        >
+{#snippet bookIcon()}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="size-5"
+    aria-hidden="true"
+  >
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path>
+  </svg>
+{/snippet}
+
+{#snippet checkIcon(label = "Yes")}
+  <svg
+    aria-label={label}
+    xmlns="http://www.w3.org/2000/svg"
+    class="inline-block size-5 text-success"
+    viewBox="0 0 24 24"
+  >
+    <path
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="3"
+      d="M5 12l5 5L20 7"
+    ></path>
+  </svg>
+{/snippet}
+
+{#snippet crossIcon()}
+  <svg
+    aria-label="No"
+    xmlns="http://www.w3.org/2000/svg"
+    class="inline-block size-5 text-error"
+    viewBox="0 0 24 24"
+  >
+    <path
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="3"
+      d="M7 7l10 10M17 7 7 17"
+    ></path>
+  </svg>
+{/snippet}
+
+{#snippet arrowIcon()}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="size-5"
+    aria-hidden="true"
+  >
+    <path d="M5 12h14M13 6l6 6-6 6"></path>
+  </svg>
+{/snippet}
+
+{#snippet floatingToolCard(role, text, motion)}
+  <div
+    class="card card-sm card-border w-52 origin-center bg-base-100 text-base-content shadow-xl will-change-transform"
+    style:opacity={motion.opacity}
+    style:transform={`translateY(${motion.translateY}px) scale(${motion.scale})`}
+  >
+    <div class="card-body flex-row items-center gap-3 p-3">
+      <img
+        src={role.icon}
+        alt=""
+        class="size-10 shrink-0 object-contain"
+        width="64"
+        height="64"
+        loading="lazy"
+      />
+      <span class="text-start text-xs leading-snug font-semibold">{$t(text)}</span>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet blueprintWordmark()}
+  <div class="inline-flex flex-col items-end" aria-label="daisyUI Blueprint version 1.5">
+    <span class="me-3 mb-1 font-mono text-[0.625rem] text-blue-500">v1.5</span>
+    <span
+      class="inline-grid grid-cols-[.5rem_1fr_.5rem] grid-rows-[.5rem_1fr_.5rem] align-middle"
+      dir="ltr"
+    >
+      <span class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></span>
+      <span class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></span>
+      <span class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></span>
+      <span class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></span>
+      <span
+        class="font-title m-1 bg-blue-600 px-3 py-1 text-xl font-bold tracking-wide text-white [grid-area:1/1/4/4] sm:text-2xl"
+        >BLUEPRINT</span
+      >
+    </span>
+  </div>
+{/snippet}
+
+{#snippet comparisonCell(cell)}
+  {#if typeof cell === "boolean"}
+    {#if cell}
+      {@render checkIcon()}
+    {:else}
+      {@render crossIcon()}
+    {/if}
+  {:else}
+    {@html $t(cell)}
+  {/if}
+{/snippet}
+
+{#await fetchDiscount then discount}
+  {#if discount && isDiscountValid(discount) && isDiscountApplicableToBlueprint(discount)}
+    <dialog bind:this={discountDialog} class="modal">
+      <div class="modal-box">
+        <div class="mb-6 grid h-24 place-items-center rounded-lg bg-base-200 p-6 text-center">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -237,4350 +1127,1720 @@
             stroke-width="1.5"
             stroke="currentColor"
             class="mx-4 size-6"
+            aria-hidden="true"
           >
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
               d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"
-            />
-          </svg>
-
-          {discount.data.attributes.amount}% {$t("Discount code")}
-
-          {#if discount.data.attributes.expires_at}
-            <Countdown
-              from={new Date(discount.data.attributes.expires_at).toLocaleString(
-                "en-GB",
-                dateFormat,
-              )}
-              dateFormat="DD/MM/YYYY, HH:mm:ss"
-            >
-              {#snippet children({ remaining })}
-                {#if remaining.done === false}
-                  <div class="shrink-0" transition:fade={{ duration: 400 }}>
-                    <date
-                      datetime={new Date(discount.data.attributes.expires_at).toLocaleString(
-                        "en-GB",
-                        dateFormat,
-                      )}
-                      class={`grid ${remaining.days > 0 ? "grid-cols-4" : "grid-cols-3"} gap-2 text-center font-mono text-xs`}
-                    >
-                      {#if remaining.days > 0}
-                        <div class="rounded-field px-2 py-1">
-                          <span class="countdown block text-lg font-normal">
-                            <span style={`--value:${remaining.days};`}></span>
-                          </span>
-                          <span
-                            class="text-neutral-content/40 block text-[0.5rem] tracking-wide uppercase"
-                            >{$t("day")}</span
-                          >
-                        </div>
-                      {/if}
-                      <div class="rounded-field px-2 py-1">
-                        <span class="countdown block text-lg font-normal">
-                          <span style={`--value:${remaining.hours};`}></span>
-                        </span>
-                        <span
-                          class="text-neutral-content/40 block text-[0.5rem] tracking-wide uppercase"
-                          >{$t("hour")}</span
-                        >
-                      </div>
-                      <div class="rounded-field px-2 py-1">
-                        <span class="countdown block text-lg font-normal">
-                          <span style={`--value:${remaining.minutes};`}></span>
-                        </span>
-                        <span
-                          class="text-neutral-content/40 block text-[0.5rem] tracking-wide uppercase"
-                          >{$t("min")}</span
-                        >
-                      </div>
-                      <div class="rounded-field px-2 py-1">
-                        <span class="countdown block text-lg font-normal">
-                          <span style={`--value:${remaining.seconds};`}></span>
-                        </span>
-                        <span
-                          class="text-neutral-content/40 block text-[0.5rem] tracking-wide uppercase"
-                          >{$t("sec")}</span
-                        >
-                      </div>
-                    </date>
-                  </div>
-                {/if}
-              {/snippet}
-            </Countdown>
-          {/if}
-        </button>
-      </div>
-      <dialog bind:this={dialogs.discount} class="modal">
-        <div class="modal-box">
-          <div class="bg-base-200 mb-6 grid h-24 place-items-center rounded-lg p-6 text-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="mx-4 size-6"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"
-              />
-            </svg>
-          </div>
-          <h2 class="font-title mb-4 text-center text-2xl font-bold">
-            {$t("Limited time discount code")}
-          </h2>
-          <div
-            class="flex w-full flex-col items-center justify-between gap-10"
-            transition:fade={{ duration: 400 }}
-          >
-            <div class="flex flex-col gap-1">
-              <div class="text-center text-sm [text-wrap:balance]">
-                {$t("Use")}
-                <span
-                  data-tip={isClipboardButtonPressed ? $t("copied") : $t("copy")}
-                  class="tooltip tooltip-error"
-                >
-                  <button
-                    class="badge badge-error cursor-copy px-2 font-mono tracking-wide"
-                    onclick={() => copyText(discount.data.attributes.code)}
-                  >
-                    {discount.data.attributes.code}
-                  </button>
-                </span>
-                {$t("code at checkout to get")}
-                {discount.data.attributes.amount}% {$t("discount.")}
-              </div>
-            </div>
-
-            {#if discount.data.attributes.expires_at}
-              <Countdown
-                from={new Date(discount.data.attributes.expires_at).toLocaleString(
-                  "en-GB",
-                  dateFormat,
-                )}
-                dateFormat="DD/MM/YYYY, HH:mm:ss"
-              >
-                {#snippet children({ remaining })}
-                  {#if remaining.done === false}
-                    <div
-                      class="tooltip shrink-0 after:hidden"
-                      data-tip={$t("Remaining time")}
-                      transition:fade={{ duration: 400 }}
-                    >
-                      <date
-                        datetime={new Date(discount.data.attributes.expires_at).toLocaleString(
-                          "en-GB",
-                          dateFormat,
-                        )}
-                        class={`grid ${remaining.days > 0 ? "grid-cols-4" : "grid-cols-3"} gap-2 text-center font-mono`}
-                      >
-                        {#if remaining.days > 0}
-                          <div class="bg-base-200 rounded-field border-base-content/5 border p-2">
-                            <span class="countdown block text-3xl font-normal">
-                              <span style={`--value:${remaining.days};`}></span>
-                            </span>
-                            <span class="block text-xs tracking-wide uppercase opacity-40"
-                              >{$t("day")}</span
-                            >
-                          </div>
-                        {/if}
-                        <div class="bg-base-200 rounded-field border-base-content/5 border p-2">
-                          <span class="countdown block text-3xl font-normal">
-                            <span style={`--value:${remaining.hours};`}></span>
-                          </span>
-                          <span class="block text-xs tracking-wide uppercase opacity-40"
-                            >{$t("hour")}</span
-                          >
-                        </div>
-                        <div class="bg-base-200 rounded-field border-base-content/5 border p-2">
-                          <span class="countdown block text-3xl font-normal">
-                            <span style={`--value:${remaining.minutes};`}></span>
-                          </span>
-                          <span class="block text-xs tracking-wide uppercase opacity-40"
-                            >{$t("min")}</span
-                          >
-                        </div>
-                        <div class="bg-base-200 rounded-field border-base-content/5 border p-2">
-                          <span class="countdown block text-3xl font-normal">
-                            <span style={`--value:${remaining.seconds};`}></span>
-                          </span>
-                          <span class="block text-xs tracking-wide uppercase opacity-40"
-                            >{$t("sec")}</span
-                          >
-                        </div>
-                      </date>
-                    </div>
-                  {/if}
-                {/snippet}
-              </Countdown>
-            {/if}
-          </div>
-        </div>
-        <form method="dialog" class="modal-backdrop">
-          <button>{$t("close")}</button>
-        </form>
-      </dialog>
-    {/if}
-  {/await}
-
-  <!-- hero -->
-
-  <div>
-    <div class="inline-block">
-      <div class="me-6 -mb-2 self-end text-end font-mono text-[0.625rem] text-blue-600">
-        {$t("Version 1.4")}
-      </div>
-      <div class="mb-4 inline-grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-        <div class="[grid-area:1/1/4/4]">
-          <div>
-            <h1
-              class="group font-title m-2 text-[clamp(2.5rem,12vw,8rem)] leading-none font-semibold text-white"
-              style="
-                background-image: linear-gradient(#3B72FE 1px, transparent 1px), linear-gradient(90deg, #3B72FE 1px, transparent 1px), linear-gradient(#3B72FE 0.5px, transparent 0.5px), linear-gradient(90deg, #3B72FE 0.5px, #155dfc 0.5px);
-                background-size: 50px 50px, 50px 50px, 10px 10px, 10px 10px;
-                background-position: -2px -2px, -2px -2px, -1px -1px, -1px -1px;"
-              dir="ltr"
-            >
-              <div
-                class="blueprint_logo_animated flex size-full bg-transparent px-4 transition-colors duration-2000 group-hover:bg-blue-600"
-              >
-                <span class="[animation-delay:50ms]"> B </span>
-                <span class="[animation-delay:100ms]"> L </span>
-                <span class="[animation-delay:150ms]"> U </span>
-                <span class="[animation-delay:200ms]"> E </span>
-                <span class="[animation-delay:250ms]"> P </span>
-                <span class="[animation-delay:300ms]"> R </span>
-                <span class="[animation-delay:350ms]"> I </span>
-                <span class="[animation-delay:400ms]"> N </span>
-                <span class="[animation-delay:450ms]"> T </span>
-              </div>
-            </h1>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="font-title ms-2 mt-2 mb-8 inline-flex items-center text-lg lg:text-[1.75rem]">
-      <img
-        src="https://img.daisyui.com/images/daisyui/mark.svg"
-        alt="daisyUI"
-        class="border-base-content/5 me-2 size-[2.4em] shrink-0 border border-dashed p-2 max-md:hidden"
-      />
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="border-base-content/5 ms-1 me-2 inline-block size-[2.4em] shrink-0 border border-dashed p-2 align-middle max-md:hidden"
-        viewBox="0 0 195 195"
-        fill="none"
-      >
-        <path
-          d="M25 97.8528L92.8822 29.9706C102.255 20.598 117.451 20.598 126.823 29.9706V29.9706C136.196 39.3431 136.196 54.5391 126.823 63.9117L75.5581 115.177"
-          stroke="currentColor"
-          stroke-width="12"
-          stroke-linecap="round"
-        />
-        <path
-          d="M76.2652 114.47L126.823 63.9117C136.196 54.5391 151.392 54.5391 160.765 63.9117L161.118 64.2652C170.491 73.6378 170.491 88.8338 161.118 98.2063L99.7248 159.6C96.6006 162.724 96.6006 167.789 99.7248 170.913L112.331 183.52"
-          stroke="currentColor"
-          stroke-width="12"
-          stroke-linecap="round"
-        />
-        <path
-          d="M109.853 46.9411L59.6482 97.1457C50.2756 106.518 50.2756 121.714 59.6482 131.087V131.087C69.0208 140.459 84.2167 140.459 93.5893 131.087L143.794 80.8822"
-          stroke="currentColor"
-          stroke-width="12"
-          stroke-linecap="round"
-        />
-      </svg>
-      <div>
-        {$t("Official daisyUI Code Generator")}
-        <span class="tooltip" data-tip="Model Context Protocol"> MCP </span>
-        {$t("Server")}
-      </div>
-    </div>
-    <div class="ms-2 py-1.5 max-sm:text-xs">
-      <svg
-        class="me-1 mb-1 inline-block size-4 align-middle opacity-30"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 665.8 1000"
-      >
-        <path
-          fill="currentColor"
-          d="M248 850c-22.667 0 -41.333 -9.333 -56 -28c0 0 -180 -236 -180 -236c-10.667 -16 -14.667 -33.333 -12 -52c2.667 -18.667 11.333 -34 26 -46c14.667 -12 31.667 -16.667 51 -14c19.333 2.667 35 12 47 28c0 0 118 154 118 154c0 0 296 -474 296 -474c10.667 -16 25 -26 43 -30c18 -4 35.667 -1.333 53 8c16 10.667 26 25 30 43c4 18 1.333 35.667 -8 53c0 0 -350 560 -350 560c-13.333 21.333 -32 32 -56 32c0 0 -2 2 -2 2"
-        ></path>
-      </svg>
-      {$t("Provides on-demand, fine-tuned daisyUI design system resources to AI")}
-    </div>
-    <div class="ms-2 py-1.5 max-sm:text-xs">
-      <svg
-        class="me-1 mb-1 inline-block size-4 align-middle opacity-30"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 665.8 1000"
-      >
-        <path
-          fill="currentColor"
-          d="M248 850c-22.667 0 -41.333 -9.333 -56 -28c0 0 -180 -236 -180 -236c-10.667 -16 -14.667 -33.333 -12 -52c2.667 -18.667 11.333 -34 26 -46c14.667 -12 31.667 -16.667 51 -14c19.333 2.667 35 12 47 28c0 0 118 154 118 154c0 0 296 -474 296 -474c10.667 -16 25 -26 43 -30c18 -4 35.667 -1.333 53 8c16 10.667 26 25 30 43c4 18 1.333 35.667 -8 53c0 0 -350 560 -350 560c-13.333 21.333 -32 32 -56 32c0 0 -2 2 -2 2"
-        ></path>
-      </svg>
-      {$t("daisyUI code generation with")}
-      <span
-        class="inline-block -rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-      >
-        <svg
-          class="text-success mx-1 inline-block size-4"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-        >
-          <g
-            stroke-linejoin="round"
-            stroke-linecap="round"
-            stroke-width="3"
-            fill="none"
-            stroke="currentColor"
-          >
-            <path d="M22 7L13.5 15.5 8.5 10.5 2 17"></path>
-            <path d="M16 7L22 7 22 13"></path>
-          </g>
-        </svg>
-        {$t("10x code quality")}
-      </span>
-      +
-      <span
-        class="inline-block rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-      >
-        <svg
-          class="text-success mx-1 inline-block size-4"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-        >
-          <g
-            stroke-linejoin="round"
-            stroke-linecap="round"
-            stroke-width="3"
-            fill="none"
-            stroke="currentColor"
-          >
-            <path d="M22 7L13.5 15.5 8.5 10.5 2 17"></path>
-            <path d="M16 7L22 7 22 13"></path>
-          </g>
-        </svg>
-        {$t("10x faster result")}
-      </span>
-      {$t("and")}
-      <span
-        class="inline-block -rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-      >
-        {$t("90% less token cost")}
-      </span>
-    </div>
-    <div class="ms-2 py-1.5 max-sm:text-xs">
-      <svg
-        class="me-1 mb-1 inline-block size-4 align-middle opacity-30"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 665.8 1000"
-      >
-        <path
-          fill="currentColor"
-          d="M248 850c-22.667 0 -41.333 -9.333 -56 -28c0 0 -180 -236 -180 -236c-10.667 -16 -14.667 -33.333 -12 -52c2.667 -18.667 11.333 -34 26 -46c14.667 -12 31.667 -16.667 51 -14c19.333 2.667 35 12 47 28c0 0 118 154 118 154c0 0 296 -474 296 -474c10.667 -16 25 -26 43 -30c18 -4 35.667 -1.333 53 8c16 10.667 26 25 30 43c4 18 1.333 35.667 -8 53c0 0 -350 560 -350 560c-13.333 21.333 -32 32 -56 32c0 0 -2 2 -2 2"
-        ></path>
-      </svg>
-      {$t("Generate unlimited and accurate daisyUI code, with any code editor, any LLM")}
-    </div>
-    <div class="ms-2 py-1.5 max-sm:text-xs">
-      <svg
-        class="me-1 mb-1 inline-block size-4 align-middle opacity-30"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 665.8 1000"
-      >
-        <path
-          fill="currentColor"
-          d="M248 850c-22.667 0 -41.333 -9.333 -56 -28c0 0 -180 -236 -180 -236c-10.667 -16 -14.667 -33.333 -12 -52c2.667 -18.667 11.333 -34 26 -46c14.667 -12 31.667 -16.667 51 -14c19.333 2.667 35 12 47 28c0 0 118 154 118 154c0 0 296 -474 296 -474c10.667 -16 25 -26 43 -30c18 -4 35.667 -1.333 53 8c16 10.667 26 25 30 43c4 18 1.333 35.667 -8 53c0 0 -350 560 -350 560c-13.333 21.333 -32 32 -56 32c0 0 -2 2 -2 2"
-        ></path>
-      </svg>
-      {$t("Convert")}
-      <span class="badge badge-soft">Image</span>
-      <span class="opacity-20">|</span>
-      <span class="badge badge-soft">Figma</span>
-      <span class="opacity-20">|</span>
-      <span class="badge badge-soft">Tailwind CSS</span>
-      <span class="opacity-20">|</span>
-      <span class="badge badge-soft">Bootstrap</span>
-      {$t("to daisyUI")}
-    </div>
-  </div>
-
-  <!-- CTA -->
-
-  <div class="ms-6 mt-10 flex flex-col gap-2 p-1">
-    <div class="flex gap-2 max-md:flex-col">
-      <a class="btn btn-lg btn-wide" href="/blueprint/cursor/">
-        <svg
-          viewBox="0 0 48 48"
-          class="size-4 opacity-40"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          ><path
-            d="M5 7H16C20.4183 7 24 10.5817 24 15V42C24 38.6863 21.3137 36 18 36H5V7Z"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="4"
-          ></path><path
-            d="M43 7H32C27.5817 7 24 10.5817 24 15V42C24 38.6863 26.6863 36 30 36H43V7Z"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="4"
-          ></path></svg
-        >
-        {$t("Install guide")}
-      </a>
-      <a
-        class="btn btn-neutral btn-lg btn-wide"
-        href={checkoutUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <svg class="size-4 opacity-60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <g
-            stroke-linejoin="round"
-            stroke-linecap="round"
-            stroke-width="2"
-            fill="none"
-            stroke="currentColor"
-          >
-            <path
-              d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"
             ></path>
-            <circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle>
-          </g>
-        </svg>
-        {$t("Get the license")}
-      </a>
-    </div>
-
-    <div class="flex items-center gap-2 ps-6 pt-2 pb-4">
-      <div class="text-[0.625rem] opacity-40">{$t("Compatible with")}</div>
-      <img class="size-4" src="https://img.daisyui.com/images/logos/claude.webp" alt="Claude" />
-      <img class="size-4" src="https://img.daisyui.com/images/logos/chatgpt.webp" alt="Codex" />
-      <img class="size-4" src="https://img.daisyui.com/images/logos/vscode.webp" alt="VS Code" />
-      <img class="size-4" src="https://img.daisyui.com/images/logos/cursor.webp?2" alt="Cursor" />
-      <div class="text-[0.625rem] opacity-40">{$t("and more")}</div>
-    </div>
-  </div>
-
-  <!-- mockup -->
-
-  <div class="relative h-[60rem] rtl:overflow-clip">
-    <div
-      class="mockup-code my-20 min-w-280 bg-black py-2 text-white outline outline-offset-1 outline-white/5 before:-ms-2.5 max-xl:absolute max-xl:end-10 max-md:-me-10"
-    >
-      <div class="-mt-9 flex items-center justify-center border-b border-white/10 pt-2 pb-1">
-        <div class="font-mono text-xs opacity-30">{$t("Your text editor")}</div>
-      </div>
-      <div class="flex">
-        <div
-          class="absolute end-10 top-140 z-1 flex -rotate-10 flex-col items-center text-blue-500 max-sm:hidden lg:end-130 lg:top-80"
-        >
-          <div class="text-center font-[Fuzzy_Bubbles] uppercase">
-            <div class="text-center text-3xl lg:text-5xl">
-              {$t("Design System")}
-              <br />
-              {$t("Resources")}
-            </div>
-            <div class="mt-2 text-3xl text-white">{$t("(on-demand)")}</div>
-          </div>
-          <svg
-            class="relative -me-65 max-lg:hidden"
-            width="120"
-            height="50"
-            viewBox="0 0 68 27"
-            fill="none"
-          >
-            <path
-              d="M0.00570263 1.10585C-0.0527213 0.556661 0.34512 0.0640961 0.894306 0.00567211C1.44349 -0.0527519 1.93606 0.345089 1.99448 0.894275L1.00009 1.00006L0.00570263 1.10585ZM67.1237 17.7183C67.5554 18.0627 67.6262 18.6919 67.2818 19.1237L61.6692 26.1592C61.3248 26.5909 60.6956 26.6617 60.2639 26.3173C59.8321 25.9729 59.7613 25.3437 60.1058 24.9119L65.0947 18.6581L58.8409 13.6692C58.4092 13.3247 58.3384 12.6955 58.6828 12.2638C59.0273 11.8321 59.6565 11.7613 60.0882 12.1057L67.1237 17.7183ZM1.00009 1.00006L1.99448 0.894275C2.6018 6.60311 4.43848 10.678 7.36681 13.5698C10.3063 16.4727 14.4502 18.287 19.8655 19.266C30.7523 21.2342 46.3375 19.762 66.3883 17.5063L66.5001 18.5L66.6119 19.4938C46.6627 21.738 30.7478 23.2658 19.5097 21.2341C13.8624 20.2131 9.28759 18.2775 5.9615 14.9928C2.6242 11.6972 0.648381 7.14703 0.00570263 1.10585L1.00009 1.00006Z"
-              fill="currentColor"
-            />
           </svg>
         </div>
-        <div class="grow pt-4">
-          <pre class="font-mono text-xs whitespace-break-spaces opacity-20 select-none">{code}</pre>
-        </div>
+        <h2 class="font-title mb-4 text-center text-2xl font-bold">
+          {$t("Limited time discount code")}
+        </h2>
         <div
-          class="-mb-2 flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 p-4 text-xs text-white/70 sm:w-120"
+          class="flex w-full flex-col items-center justify-between gap-10"
+          transition:fade={{ duration: 400 }}
         >
-          <div class="flex justify-end gap-3 opacity-50">
-            <svg
-              class="size-3 fill-current"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 512 512"
-            >
-              <path d="M448 224H288V64h-64v160H64v64h160v160h64V288h160z"></path>
-            </svg>
-            <svg class="size-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-              <path
-                d="M25.99 6C16.04 6 8 14.06 8 24H2l7.79 7.79.14.29L18 24h-6c0-7.73 6.27-14 14-14s14 6.27 14 14-6.27 14-14 14c-3.87 0-7.36-1.58-9.89-4.11l-2.83 2.83C16.53 39.98 21.02 42 25.99 42 35.94 42 44 33.94 44 24S35.94 6 25.99 6zM24 16v10l8.56 5.08L34 28.65l-7-4.15V16h-3z"
-              ></path>
-            </svg>
-            <svg
-              class="size-3 fill-current"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 512 512"
-            >
-              <path
-                d="M256 224c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32zM128.4 224c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.4-32-32-32zM384 224c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32z"
-              ></path>
-            </svg>
-          </div>
-          <div class="rounded-box border border-white/5 bg-white/5 p-4">
-            Create a daisyUI login form with form validator, a remember me checkbox and a forgot
-            password link
-          </div>
-          <div class="opacity-30">Thought for 1s</div>
-          <div>Fetching required daisyUI code snippets</div>
-          <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-            <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-            <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-            <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-            <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-            <div
-              class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-            >
-              <div class="flex justify-between">
-                <div>
-                  <svg
-                    class="text-success inline-block size-3"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 48 48"
-                  >
-                    <g fill="none">
-                      <path
-                        d="M10 24L20 34L40 14"
-                        stroke="currentColor"
-                        stroke-width="4"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      ></path>
-                    </g>
-                  </svg>
-                  <span class="opacity-50">Ran</span>
-                  <span
-                    class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500"
-                  >
-                    <svg
-                      class="size-3 fill-current opacity-50"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                      ></path>
-                    </svg>
-                    daisyUI Blueprint
-                  </span>
-                  <span class="opacity-50">MCP tool</span>
-                </div>
-                <svg
-                  class="inline-block size-3"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 18 18"
+          <div class="flex flex-col gap-1">
+            <div class="text-center text-sm [text-wrap:balance]">
+              {$t("Use")}
+              <span
+                data-tip={isClipboardButtonPressed ? $t("copied") : $t("copy")}
+                class="tooltip tooltip-error"
+              >
+                <button
+                  class="badge badge-error cursor-copy px-2 font-mono tracking-wide"
+                  onclick={() => copyText(discount.data.attributes.code)}
                 >
-                  <path
-                    d="M9.53,2.22c-.293-.293-.768-.293-1.061,0l-3.5,3.5c-.293,.293-.293,.768,0,1.061s.768,.293,1.061,0l2.97-2.97,2.97,2.97c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22c.293-.293,.293-.768,0-1.061l-3.5-3.5Z"
-                    fill="currentColor"
-                  ></path>
-                  <path
-                    d="M11.97,11.22l-2.97,2.97-2.97-2.97c-.293-.293-.768-.293-1.061,0s-.293,.768,0,1.061l3.5,3.5c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22l3.5-3.5c.293-.293,.293-.768,0-1.061s-.768-.293-1.061,0Z"
-                    fill="currentColor"
-                  ></path>
-                </svg>
-              </div>
-              <div>Received required components from MCP:</div>
-              <div>card, input, button, link, checkbox, validator</div>
-              <div class="flex- my-2 columns-2 items-start gap-2">
-                <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-                  <img
-                    src="https://img.daisyui.com/images/components-screenshot/checkbox.png"
-                    alt="button"
-                  />
-                </div>
-                <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-                  <img
-                    src="https://img.daisyui.com/images/components-screenshot/button.png"
-                    alt="button"
-                  />
-                </div>
-                <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-                  <img
-                    src="https://img.daisyui.com/images/components-screenshot/input.png"
-                    alt="button"
-                  />
-                </div>
-                <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-                  <img
-                    src="https://img.daisyui.com/images/components-screenshot/card.png"
-                    alt="button"
-                  />
-                </div>
-              </div>
-              <div>
-                <svg
-                  class="text-success inline-block size-3"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 48 48"
-                >
-                  <g fill="none">
-                    <path
-                      d="M10 24L20 34L40 14"
-                      stroke="currentColor"
-                      stroke-width="4"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    ></path>
-                  </g>
-                </svg>
-                Reading specs, docs and examples.
-              </div>
-              <div>
-                <svg
-                  class="text-success inline-block size-3"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 48 48"
-                >
-                  <g fill="none">
-                    <path
-                      d="M10 24L20 34L40 14"
-                      stroke="currentColor"
-                      stroke-width="4"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    ></path>
-                  </g>
-                </svg>
-                Done.
-              </div>
+                  {discount.data.attributes.code}
+                </button>
+              </span>
+              {$t("code at checkout to get")}
+              {discount.data.attributes.amount}% {$t("discount.")}
             </div>
           </div>
-          <div>
-            Creating login form with daisyUI components with a remember me checkbox and a forgot
-            password link
-          </div>
-          <div>
-            <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <g
-                  stroke-linejoin="round"
-                  stroke-linecap="round"
-                  stroke-width="2"
-                  fill="none"
-                  stroke="currentColor"
+
+          <Countdown
+            from={new Date(discount.data.attributes.expires_at).toLocaleString("en-GB", dateFormat)}
+            dateFormat="DD/MM/YYYY, HH:mm:ss"
+          >
+            {#snippet children({ remaining })}
+              {#if remaining.done === false}
+                <div
+                  class="tooltip shrink-0 after:hidden"
+                  data-tip={$t("Remaining time")}
+                  transition:fade={{ duration: 400 }}
                 >
-                  <path d="M16 18L22 12 16 6"></path>
-                  <path d="M8 6L2 12 8 18"></path>
-                </g>
-              </svg>
-              index.html
-              <span class="text-green-400">+50</span>
-              <span class="text-red-400">-1</span>
-            </span>
-          </div>
-          <div>
-            <svg
-              class="text-success inline-block size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 48 48"
+                  <date
+                    datetime={new Date(discount.data.attributes.expires_at).toLocaleString(
+                      "en-GB",
+                      dateFormat,
+                    )}
+                    class={`grid ${remaining.days > 0 ? "grid-cols-4" : "grid-cols-3"} gap-2 text-center font-mono`}
+                  >
+                    {#if remaining.days > 0}
+                      <div class="rounded-field border border-base-content/5 bg-base-200 p-2">
+                        <span class="countdown block text-3xl font-normal">
+                          <span style={`--value:${remaining.days};`}></span>
+                        </span>
+                        <span class="block text-xs tracking-wide uppercase opacity-40">
+                          {$t("day")}
+                        </span>
+                      </div>
+                    {/if}
+                    <div class="rounded-field border border-base-content/5 bg-base-200 p-2">
+                      <span class="countdown block text-3xl font-normal">
+                        <span style={`--value:${remaining.hours};`}></span>
+                      </span>
+                      <span class="block text-xs tracking-wide uppercase opacity-40">
+                        {$t("hour")}
+                      </span>
+                    </div>
+                    <div class="rounded-field border border-base-content/5 bg-base-200 p-2">
+                      <span class="countdown block text-3xl font-normal">
+                        <span style={`--value:${remaining.minutes};`}></span>
+                      </span>
+                      <span class="block text-xs tracking-wide uppercase opacity-40">
+                        {$t("min")}
+                      </span>
+                    </div>
+                    <div class="rounded-field border border-base-content/5 bg-base-200 p-2">
+                      <span class="countdown block text-3xl font-normal">
+                        <span style={`--value:${remaining.seconds};`}></span>
+                      </span>
+                      <span class="block text-xs tracking-wide uppercase opacity-40">
+                        {$t("sec")}
+                      </span>
+                    </div>
+                  </date>
+                </div>
+              {/if}
+            {/snippet}
+          </Countdown>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>{$t("close")}</button>
+      </form>
+    </dialog>
+  {/if}
+{/await}
+
+{#if showTrialBar}
+  <aside
+    class="fixed bottom-3 left-1/2 z-20 w-[calc(100%-1.5rem)] max-w-3xl -translate-x-1/2"
+    aria-label={$t("Blueprint free trial")}
+    transition:fly={{ y: reducedMotion ? 0 : 16, duration: reducedMotion ? 0 : 300 }}
+  >
+    <div
+      class="flex flex-wrap items-center justify-center gap-3 rounded-box border border-neutral-content/10 bg-neutral p-2 text-center text-sm font-semibold text-neutral-content shadow-2xl sm:justify-between sm:ps-5"
+    >
+      <div class="flex items-center gap-2">
+        <img
+          src="https://img.daisyui.com/images/emoji/0240_backhand-index-pointing-right_1f449.png"
+          alt=""
+          class="h-[30px] w-auto object-contain max-sm:hidden rtl:-scale-x-100"
+          width="30"
+          height="30"
+          loading="lazy"
+        />
+        {#await fetchDiscount}
+          <span
+            >{$t("3-day free trial")}<span class="max-sm:hidden">{$t(", cancel anytime.")}</span
+            ></span
+          >
+        {:then discount}
+          {#if discount && isDiscountValid(discount) && isDiscountApplicableToBlueprint(discount)}
+            <button class="link link-hover" onclick={() => discountDialog?.showModal()}>
+              {discount.data.attributes.amount}% {$t("Discount code")}
+            </button>
+          {:else}
+            <span
+              >{$t("3-day free trial")}<span class="max-sm:hidden">{$t(", cancel anytime.")}</span
+              ></span
             >
-              <g fill="none">
-                <path
-                  d="M10 24L20 34L40 14"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </g>
-            </svg>
-            Login form made with daisyUI components has been added to index.html using daisyUI Blueprint
-            MCP server.
+          {/if}
+        {/await}
+      </div>
+      <a class="btn btn-sm" href={checkoutUrl} target="_blank" rel="noopener noreferrer">
+        {@render keyIcon()}
+        {$t("Get Your Blueprint License")}
+      </a>
+    </div>
+  </aside>
+{/if}
+
+<div class="overflow-x-clip bg-base-100 text-base-content">
+  <main>
+    <section
+      use:trackHero
+      class="hero relative min-h-[calc(100svh-4rem)] overflow-hidden border-y border-base-300"
+      style="
+        background-image: linear-gradient(var(--color-base-300) 1px, transparent 1px), linear-gradient(90deg, var(--color-base-300) 1px, transparent 1px), linear-gradient(var(--color-base-300) 0.5px, transparent 0.5px), linear-gradient(90deg, var(--color-base-300) 0.5px, var(--color-base-100) 0.5px);
+        background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+        background-position: -1px -1px, -1px -1px, -.5px -.5px, -.5px -.5px;"
+    >
+      <div
+        class="hero-content relative z-1 mx-auto grid w-full max-w-7xl px-4 py-16 sm:px-8 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:py-24"
+      >
+        <div class="min-w-0">
+          <div
+            class="badge badge-soft badge-sm gap-2 transition-[opacity,transform] duration-500 motion-reduce:transition-none"
+            class:translate-y-3={enhanced && !pageReady}
+            class:opacity-0={enhanced && !pageReady}
+          >
+            <span class="status status-success status-sm" aria-hidden="true"></span>
+            {$t("This page was made with Blueprint MCP and GPT 5.6")}
           </div>
-          <!-- AI input -->
-          <div class="rounded-box border border-white/5 bg-white/5 p-2">
-            <div class="flex gap-2 leading-none">
-              <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
+
+          <h1
+            class="font-title -ms-4 mt-6 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl"
+          >
+            <div class="ms-6">
+              <img
+                src="https://img.daisyui.com/images/daisyui/mark.svg"
+                alt="daisyUI"
+                class="relative -mt-6 inline-block size-[1.2em] shrink-0 -rotate-5 border border-dashed border-base-content/5 p-1 object-contain"
+                width="96"
+                height="96"
+              />
+              {$t("The Official")}
+            </div>
+            <div>
+              <span
+                class="text-rotate -rotate-1 text-[0.9em] leading-tight text-white duration-10000"
+              >
+                <span>
+                  <span class="ms-10 bg-blue-600 px-2">{$t("UI Generator")}</span>
+                  <span class="bg-blue-600 px-2">{$t("Creative Director")}</span>
+                  <span class="ms-5 bg-blue-600 px-2">{$t("Page Architect")}</span>
+                  <span class="bg-blue-600 px-2">{$t("Design System Expert")}</span>
+                </span>
+              </span>
+            </div>
+            <div class="relative ms-5">
+              {$t("MCP Server")}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="-mt-6 inline-block size-[1.2em] shrink-0 rotate-5 border border-dashed border-base-content/5 p-2 align-middle"
+                viewBox="0 0 195 195"
+                fill="none"
+                aria-label="Model Context Protocol"
+              >
+                <path
+                  d="M25 97.8528L92.8822 29.9706C102.255 20.598 117.451 20.598 126.823 29.9706V29.9706C136.196 39.3431 136.196 54.5391 126.823 63.9117L75.5581 115.177"
+                  stroke="currentColor"
+                  stroke-width="12"
+                  stroke-linecap="round"
+                ></path>
+                <path
+                  d="M76.2652 114.47L126.823 63.9117C136.196 54.5391 151.392 54.5391 160.765 63.9117L161.118 64.2652C170.491 73.6378 170.491 88.8338 161.118 98.2063L99.7248 159.6C96.6006 162.724 96.6006 167.789 99.7248 170.913L112.331 183.52"
+                  stroke="currentColor"
+                  stroke-width="12"
+                  stroke-linecap="round"
+                ></path>
+                <path
+                  d="M109.853 46.9411L59.6482 97.1457C50.2756 106.518 50.2756 121.714 59.6482 131.087V131.087C69.0208 140.459 84.2167 140.459 93.5893 131.087L143.794 80.8822"
+                  stroke="currentColor"
+                  stroke-width="12"
+                  stroke-linecap="round"
+                ></path>
+              </svg>
+            </div>
+          </h1>
+
+          <div
+            class="mt-8 max-w-2xl text-base leading-relaxed text-base-content/65 transition-[opacity,transform] duration-700 [transition-delay:380ms] motion-reduce:transition-none sm:text-lg"
+            class:translate-y-4={enhanced && !pageReady}
+            class:opacity-0={enhanced && !pageReady}
+          >
+            <div class="ms-2 py-1.5 max-sm:text-xs">
+              <svg
+                class="me-1 mb-1 inline-block size-4 align-middle text-success"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 665.8 1000"
+                aria-hidden="true"
+              >
+                <path
+                  fill="currentColor"
+                  d="M248 850c-22.667 0 -41.333 -9.333 -56 -28c0 0 -180 -236 -180 -236c-10.667 -16 -14.667 -33.333 -12 -52c2.667 -18.667 11.333 -34 26 -46c14.667 -12 31.667 -16.667 51 -14c19.333 2.667 35 12 47 28c0 0 118 154 118 154c0 0 296 -474 296 -474c10.667 -16 25 -26 43 -30c18 -4 35.667 -1.333 53 8c16 10.667 26 25 30 43c4 18 1.333 35.667 -8 53c0 0 -350 560 -350 560c-13.333 21.333 -32 32 -56 32c0 0 -2 2 -2 2"
+                ></path>
+              </svg>
+              {$t("The most powerful agentic UI workflow in an MCP server")}
+            </div>
+            <div class="ms-2 py-1.5 max-sm:text-xs">
+              <svg
+                class="me-1 mb-1 inline-block size-4 align-middle text-success"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 665.8 1000"
+                aria-hidden="true"
+              >
+                <path
+                  fill="currentColor"
+                  d="M248 850c-22.667 0 -41.333 -9.333 -56 -28c0 0 -180 -236 -180 -236c-10.667 -16 -14.667 -33.333 -12 -52c2.667 -18.667 11.333 -34 26 -46c14.667 -12 31.667 -16.667 51 -14c19.333 2.667 35 12 47 28c0 0 118 154 118 154c0 0 296 -474 296 -474c10.667 -16 25 -26 43 -30c18 -4 35.667 -1.333 53 8c16 10.667 26 25 30 43c4 18 1.333 35.667 -8 53c0 0 -350 560 -350 560c-13.333 21.333 -32 32 -56 32c0 0 -2 2 -2 2"
+                ></path>
+              </svg>
+              <span
+                class="inline-block -rotate-1 bg-green-100 px-2 py-0.25 text-sm font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
+              >
                 <svg
-                  class="size-3 opacity-50"
+                  class="text-success mx-1 inline-block size-4"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
+                  aria-hidden="true"
                 >
                   <g
                     stroke-linejoin="round"
                     stroke-linecap="round"
-                    stroke-width="2"
+                    stroke-width="3"
                     fill="none"
                     stroke="currentColor"
                   >
-                    <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                    <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
+                    <path d="M22 7L13.5 15.5 8.5 10.5 2 17"></path>
+                    <path d="M16 7L22 7 22 13"></path>
                   </g>
                 </svg>
-              </div>
-              <div
-                class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
+                {$t("10× better code quality")}
+              </span>
+              +
+              <span
+                class="inline-block rotate-1 bg-green-100 px-2 py-0.25 text-sm font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
               >
-                index.html
-              </div>
-            </div>
-            <div class="py-2 opacity-50">Ask AI...</div>
-            <div class="flex justify-between">
-              <div class="flex gap-2 leading-none">
-                <div
-                  class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-                >
-                  Agent
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    class="inline-block size-3"
-                  >
-                    <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-                  </svg>
-                </div>
-                <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-                  <svg
-                    class="size-3 fill-current opacity-50"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                    >
-                    </path>
-                  </svg>
-                  daisyUI Blueprint
-                </span>
-              </div>
-              <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
                 <svg
-                  class="size-3"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 18 18"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
-                  ></path>
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- problem -->
-
-  <div
-    class="from-error/10 relative mb-20 flex min-h-[100vh] items-start gap-12 bg-radial to-50% max-lg:flex-col lg:gap-24"
-  >
-    <div class="grow">
-      <div class="prose pt-10 lg:min-h-[60vh]">
-        <span class="badge badge-soft mb-4">{$t("Problem")}</span>
-        <h2
-          id="problem"
-          class="text-error font-title mt-0 mb-8 text-[clamp(2.5rem,8vw,3rem)] leading-none"
-        >
-          {$t("Why AI sucks at UI?")}
-        </h2>
-        <div>
-          <p>
-            {$t(
-              "If you open an LLM and simply ask for UI code, you're probably going to get broken, outdated or mediocre results. But why is that?",
-            )}
-          </p>
-          <p>{$t("To generate a good looking UI, LLM needs:")}</p>
-          <ol>
-            <li>{$t("Docs and tutorials")}</li>
-            <li>{$t("Design system resources")}</li>
-            <li>{$t("List of all available components and their specs")}</li>
-            <li>{$t("Code examples and syntax")}</li>
-            <li>{$t("Design tokens, colors, states, variants and variables")}</li>
-            <li>{$t("Modification guide and best practices")}</li>
-          </ol>
-          <div class="chat chat-end text-sm">
-            <div class="chat-bubble">
-              {$t("I see, let's put them all in a 600KB .md file and give it to LLM.")}
-            </div>
-          </div>
-          <div class="chat chat-end text-sm">
-            <div class="chat-bubble">{$t("That should work!")}</div>
-          </div>
-          <div class="chat chat-start text-sm">
-            <div class="chat-bubble">{$t("Well... no.")}</div>
-          </div>
-          <div class="chat chat-start text-sm">
-            <div class="chat-bubble">
-              {$t("Providing too much context won't work either.")}
-              <br />{$t(
-                "LLM will ignore most of it, hallucinates the rest and lies to you about it.",
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box sticky top-32 mt-28 flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black/70 p-4 text-xs text-white/70 max-md:mx-auto sm:w-120"
-    >
-      <div class="flex justify-end gap-3 opacity-50">
-        <svg class="size-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-          <path d="M448 224H288V64h-64v160H64v64h160v160h64V288h160z"></path>
-        </svg>
-        <svg class="size-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-          <path
-            d="M25.99 6C16.04 6 8 14.06 8 24H2l7.79 7.79.14.29L18 24h-6c0-7.73 6.27-14 14-14s14 6.27 14 14-6.27 14-14 14c-3.87 0-7.36-1.58-9.89-4.11l-2.83 2.83C16.53 39.98 21.02 42 25.99 42 35.94 42 44 33.94 44 24S35.94 6 25.99 6zM24 16v10l8.56 5.08L34 28.65l-7-4.15V16h-3z"
-          ></path>
-        </svg>
-        <svg class="size-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-          <path
-            d="M256 224c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32zM128.4 224c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.4-32-32-32zM384 224c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32z"
-          ></path>
-        </svg>
-      </div>
-      <div class="rounded-box border border-white/5 bg-white/5 p-4">
-        Create a daisyUI login form with form validator, a remember me checkbox and a forgot
-        password link
-      </div>
-      <div class="opacity-30">Thought for 5s</div>
-      <div>
-        Let me <span class="text-error italic">guess</span>
-        how a daisyUI login form looks like...
-      </div>
-      <div>
-        Based on my 2023 coding knowledge, let me
-        <span class="text-error italic">guess</span>
-        the syntax...
-      </div>
-      <div>
-        <span class="text-error italic">I'm not sure</span>
-        what's the correct way to put it together. Let me search the web...
-      </div>
-      <div>
-        I found 20 random pages that I'm not going to read anyway. But who cares... Here's a
-        mediocre AI slop for you.
-      </div>
-      <div>
-        <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white">
-          <svg
-            class="size-3 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <g
-              stroke-linejoin="round"
-              stroke-linecap="round"
-              stroke-width="2"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path d="M16 18L22 12 16 6"></path>
-              <path d="M8 6L2 12 8 18"></path>
-            </g>
-          </svg>
-          index.html
-          <span class="text-green-400">+183</span>
-          <span class="text-red-400">-29</span>
-        </span>
-      </div>
-      <div>Do you want me to add more purple gradients? I love purple.</div>
-      <!-- AI input -->
-      <div class="rounded-box border border-white/5 bg-white/5 p-2">
-        <div class="flex gap-2 leading-none">
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg class="size-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
-              </g>
-            </svg>
-          </div>
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            index.html
-          </div>
-        </div>
-        <div class="py-2 opacity-50">Ask AI...</div>
-        <div class="flex justify-between">
-          <div class="flex gap-2 leading-none">
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              Agent
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-              </svg>
-            </div>
-            <span class="badge badge-xs border-error/10 bg-error/10 text-error gap-1">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                >
-                </path>
-              </svg>
-              No MCP
-            </span>
-          </div>
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg
-              class="size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 18 18"
-              fill="currentColor"
-            >
-              <path
-                d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
-              ></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-      <svg
-        class="text-error absolute end-2 bottom-21 size-12 rotate-4"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 18 18"
-      >
-        <g fill="currentColor">
-          <path
-            d="M7.638,3.495L2.213,12.891c-.605,1.048,.151,2.359,1.362,2.359H14.425c1.211,0,1.967-1.31,1.362-2.359L10.362,3.495c-.605-1.048-2.119-1.048-2.724,0Z"
-            fill="none"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.5"
-          ></path>
-          <line
-            x1="9"
-            y1="6.5"
-            x2="9"
-            y2="10"
-            fill="none"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.5"
-          ></line>
-          <path
-            d="M9,13.569c-.552,0-1-.449-1-1s.448-1,1-1,1,.449,1,1-.448,1-1,1Z"
-            fill="currentColor"
-            data-stroke="none"
-            stroke="none"
-          ></path>
-        </g>
-      </svg>
-    </div>
-  </div>
-
-  <!-- solution -->
-
-  <div class="relative flex items-start gap-12 max-lg:flex-col lg:gap-24">
-    <div class="grow max-lg:mb-20">
-      <div class="prose lg:min-h-[80vh]">
-        <span class="badge badge-soft mb-4">{$t("Solution")}</span>
-        <h2 id="solution" class="font-title mt-0 mb-8 text-[clamp(2.5rem,8vw,3rem)] leading-none">
-          {$t("Providing")} <span class="text-blue-500">{$t("context")}</span>
-          {$t("to LLM")}
-          <div class="font-semibold">{$t("right time, right place")}</div>
-        </h2>
-        <div>
-          <p>
-            {$t(
-              "MCP (Model Context Protocol) is an API protocol for AI to get accurate, reliable context information on demand, instead of guessing or searching through irrelevant data everytime.",
-            )}
-          </p>
-          <p>
-            {$t("The official daisyUI Blueprint MCP server provide")}
-            <span class="font-semibold">{$t("real-time context")}</span>
-            {$t("to the LLM, using MCP tools, MCP prompts and MCP resources.")}
-          </p>
-          <p>{$t("No more guessworks, no hallucinations, no outdated syntax.")}</p>
-          <p>
-            {$t("It")}
-            <span
-              class="inline-block -rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-            >
-              {$t("increases code quality")}
-            </span>, {$t(
-              "because LLM gains access to the correct context right away instead of reading a big llms.txt file or searching the web for random pages, or guessing the results based on outdated info.",
-            )}
-          </p>
-          <p>
-            {$t(
-              "Providing the right context at the right time means fast, efficient, and accurate results. The LLM receives exactly what it needs, which means",
-            )}
-            <span
-              class="inline-block rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-            >
-              {$t("faster code generation")}
-            </span>
-            {$t("and")}
-            <span
-              class="inline-block -rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-            >
-              {$t("less token usage.")}
-            </span>
-          </p>
-        </div>
-      </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box sticky top-50 mt-40 -mb-4 flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black p-4 text-xs text-white/70 max-lg:hidden sm:w-120"
-    >
-      <div class="flex justify-end gap-3 opacity-50">
-        <svg class="size-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-          <path d="M448 224H288V64h-64v160H64v64h160v160h64V288h160z"></path>
-        </svg>
-        <svg class="size-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-          <path
-            d="M25.99 6C16.04 6 8 14.06 8 24H2l7.79 7.79.14.29L18 24h-6c0-7.73 6.27-14 14-14s14 6.27 14 14-6.27 14-14 14c-3.87 0-7.36-1.58-9.89-4.11l-2.83 2.83C16.53 39.98 21.02 42 25.99 42 35.94 42 44 33.94 44 24S35.94 6 25.99 6zM24 16v10l8.56 5.08L34 28.65l-7-4.15V16h-3z"
-          ></path>
-        </svg>
-        <svg class="size-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-          <path
-            d="M256 224c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32zM128.4 224c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.4-32-32-32zM384 224c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32z"
-          ></path>
-        </svg>
-      </div>
-      <div class="rounded-box border border-white/5 bg-white/5 p-4">
-        Create a daisyUI form for profile settings with form validator and a save button
-      </div>
-      <div class="opacity-30">Thought for 1s</div>
-      <div>
-        <svg class="inline-block size-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <g
-            stroke-linejoin="round"
-            stroke-linecap="round"
-            stroke-width="2"
-            fill="none"
-            stroke="currentColor"
-          >
-            <path class="opacity-100" d="M12 6l0 -3"></path>
-            <path class="opacity-90" d="M16.25 7.75l2.15 -2.15"></path>
-            <path class="opacity-80" d="M18 12l3 0"></path>
-            <path class="opacity-70" d="M16.25 16.25l2.15 2.15"></path>
-            <path class="opacity-60" d="M12 18l0 3"></path>
-            <path class="opacity-50" d="M7.75 16.25l-2.15 2.15"></path>
-            <path class="opacity-40" d="M6 12l-3 0"></path>
-            <path class="opacity-30" d="M7.75 7.75l-2.15 -2.15"></path>
-          </g>
-        </svg>
-        Fetching daisyUI code snippets and design system resources...
-      </div>
-    </div>
-  </div>
-</div>
-<div
-  class="border-base-300 mt-20 min-h-[50rem] w-full border-t border-b px-4 py-20 md:px-20!"
-  style="
-                background-image: linear-gradient(var(--color-base-300) 1px, transparent 1px), linear-gradient(90deg, var(--color-base-300) 1px, transparent 1px), linear-gradient(var(--color-base-300) 0.5px, transparent 0.5px), linear-gradient(90deg, var(--color-base-300) 0.5px, var(--color-base-100) 0.5px);
-                background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
-                background-position: -1px -1px, -1px -1px, -.5px -.5px, -.5px -.5px;"
->
-  <!-- introducing -->
-
-  <div
-    class="relative flex items-start gap-12 max-lg:flex-col lg:gap-24"
-    style="background: radial-gradient(at 40% 40%, var(--color-indigo-500) -200%, transparent 30%), radial-gradient(at 60% 60%, var(--color-pink-500) -200%, transparent 30%);"
-  >
-    <div class="grow">
-      <div class="prose lg:min-h-[60vh]">
-        <div class="font-title text-base-content/50 mb-4 text-2xl">
-          {$t("Introducing")}
-          <div
-            class="inline-grid grid-cols-[.5rem_1fr_.5rem] grid-rows-[.5rem_1fr_.5rem] align-middle"
-          >
-            <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-            <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-            <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-            <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-            <div
-              class="font-title m-1 bg-blue-600 px-1 font-semibold text-white [grid-area:1/1/4/4]"
-            >
-              BLUEPRINT
-            </div>
-          </div>
-          {$t("MCP server")}
-        </div>
-        <h2
-          id="design-system-provider"
-          class="font-title mt-0 mb-8 text-xl leading-none font-semibold lg:text-5xl"
-        >
-          {$t("Design System")}
-          <br />
-          {$t("Resource Provider")}
-          <br />
-          {$t("for daisyUI")}
-        </h2>
-        <div>
-          <p>
-            Blueprint {$t("MCP server")} provides
-            <span
-              class="inline-block -rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-            >
-              curated resources
-            </span> to your LLM
-          </p>
-          <ul class="list-none p-0">
-            <li>
-              <svg
-                class="text-success me-2 inline-block size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                ><g fill="none"
-                  ><path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path></g
-                ></svg
-              >
-              {$t("daisyUI code snippets")}
-            </li>
-            <li>
-              <svg
-                class="text-success me-2 inline-block size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                ><g fill="none"
-                  ><path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path></g
-                ></svg
-              >
-              {$t("Pictures of daisyUI components")}
-            </li>
-            <li>
-              <svg
-                class="text-success me-2 inline-block size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                ><g fill="none"
-                  ><path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path></g
-                ></svg
-              >
-              {$t("Docs, specs, class names, variants, variables")}
-            </li>
-            <li>
-              <svg
-                class="text-success me-2 inline-block size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                ><g fill="none"
-                  ><path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path></g
-                ></svg
-              >
-              {$t("Layout examples")}
-            </li>
-            <li>
-              <svg
-                class="text-success me-2 inline-block size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                ><g fill="none"
-                  ><path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path></g
-                ></svg
-              >
-              {$t("Best practices")}
-            </li>
-          </ul>
-          <p>
-            {$t(
-              "This will guarantee an accurate and efficient result, without guessworks or hallucinations.",
-            )}
-          </p>
-        </div>
-      </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box sticky -mb-2 flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black p-4 text-xs text-white/70 max-md:mx-auto sm:w-120 md:top-32 lg:-mt-55"
-    >
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using <span class="text-blue-500">daisyUI Blueprint</span> MCP
-      </div>
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div class="flex justify-between">
-            <div>
-              <svg
-                class="text-success inline-block size-3"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-              >
-                <g fill="none">
-                  <path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="4"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path>
-                </g>
-              </svg>
-              <span class="opacity-50">Ran</span>
-              <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-                <svg
-                  class="size-3 fill-current opacity-50"
+                  class="text-success mx-1 inline-block size-4"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
+                  aria-hidden="true"
                 >
-                  <path
-                    d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                  ></path>
+                  <g
+                    stroke-linejoin="round"
+                    stroke-linecap="round"
+                    stroke-width="3"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path d="M22 7L13.5 15.5 8.5 10.5 2 17"></path>
+                    <path d="M16 7L22 7 22 13"></path>
+                  </g>
                 </svg>
-                daisyUI Blueprint
+                {$t("10× faster results")}
               </span>
-              <span class="opacity-50">MCP tool</span>
-            </div>
-            <svg class="inline-block size-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
-              <path
-                d="M9.53,2.22c-.293-.293-.768-.293-1.061,0l-3.5,3.5c-.293,.293-.293,.768,0,1.061s.768,.293,1.061,0l2.97-2.97,2.97,2.97c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22c.293-.293,.293-.768,0-1.061l-3.5-3.5Z"
-                fill="currentColor"
-              ></path>
-              <path
-                d="M11.97,11.22l-2.97,2.97-2.97-2.97c-.293-.293-.768-.293-1.061,0s-.293,.768,0,1.061l3.5,3.5c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22l3.5-3.5c.293-.293,.293-.768,0-1.061s-.768-.293-1.061,0Z"
-                fill="currentColor"
-              ></path>
-            </svg>
-          </div>
-          <div>Received required components from MCP:</div>
-          <div>
-            checkbox, toggle, radio, button, input, select, label, fieldset, validator, accordion
-          </div>
-          <div class="flex- my-2 columns-2 items-start gap-2">
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/checkbox.png"
-                alt="button"
-              />
-            </div>
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/toggle.png"
-                alt="button"
-              />
-            </div>
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/radio.png"
-                alt="button"
-              />
-            </div>
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/input.png"
-                alt="button"
-              />
-            </div>
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/select.png"
-                alt="button"
-              />
-            </div>
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/accordion.png"
-                alt="button"
-              />
-            </div>
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/button.png"
-                alt="button"
-              />
-            </div>
-          </div>
-          <div>
-            <svg
-              class="text-success inline-block size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 48 48"
-            >
-              <g fill="none">
-                <path
-                  d="M10 24L20 34L40 14"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </g>
-            </svg>
-            Reading specs, docs and examples.
-          </div>
-          <div>
-            <svg
-              class="text-success inline-block size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 48 48"
-            >
-              <g fill="none">
-                <path
-                  d="M10 24L20 34L40 14"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </g>
-            </svg>
-            Done.
-          </div>
-        </div>
-      </div>
-      <div>Creating a daisyUI form for profile settings using the provided resources...</div>
-      <div>
-        <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white">
-          <svg
-            class="size-3 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <g
-              stroke-linejoin="round"
-              stroke-linecap="round"
-              stroke-width="2"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path d="M16 18L22 12 16 6"></path>
-              <path d="M8 6L2 12 8 18"></path>
-            </g>
-          </svg>
-          index.html
-          <span class="text-green-400">+50</span>
-          <span class="text-red-400">-1</span>
-        </span>
-      </div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-        >
-          <g fill="none">
-            <path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path>
-          </g>
-        </svg>
-        Profile settings form made with daisyUI components has been added to index.html using daisyUI
-        Blueprint MCP server.
-      </div>
-      <!-- AI input -->
-      <div class="rounded-box border border-white/5 bg-white/5 p-2">
-        <div class="flex gap-2 leading-none">
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg class="size-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
+              {$t("and")}
+              <span
+                class="inline-block -rotate-1 bg-green-100 px-2 py-0.25 text-sm font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
               >
-                <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
-              </g>
-            </svg>
+                {$t("90% lower token costs")}
+              </span>
+            </div>
+            <div class="ms-2 py-1.5 max-sm:text-xs">
+              <svg
+                class="me-1 mb-1 inline-block size-4 align-middle text-success"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 665.8 1000"
+                aria-hidden="true"
+              >
+                <path
+                  fill="currentColor"
+                  d="M248 850c-22.667 0 -41.333 -9.333 -56 -28c0 0 -180 -236 -180 -236c-10.667 -16 -14.667 -33.333 -12 -52c2.667 -18.667 11.333 -34 26 -46c14.667 -12 31.667 -16.667 51 -14c19.333 2.667 35 12 47 28c0 0 118 154 118 154c0 0 296 -474 296 -474c10.667 -16 25 -26 43 -30c18 -4 35.667 -1.333 53 8c16 10.667 26 25 30 43c4 18 1.333 35.667 -8 53c0 0 -350 560 -350 560c-13.333 21.333 -32 32 -56 32c0 0 -2 2 -2 2"
+                ></path>
+              </svg>
+              {$t("Provides on-demand, fine-tuned UI design knowledge to your AI agent")}
+            </div>
+            <div class="ms-2 py-1.5 max-sm:text-xs">
+              <svg
+                class="me-1 mb-1 inline-block size-4 align-middle text-success"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 665.8 1000"
+                aria-hidden="true"
+              >
+                <path
+                  fill="currentColor"
+                  d="M248 850c-22.667 0 -41.333 -9.333 -56 -28c0 0 -180 -236 -180 -236c-10.667 -16 -14.667 -33.333 -12 -52c2.667 -18.667 11.333 -34 26 -46c14.667 -12 31.667 -16.667 51 -14c19.333 2.667 35 12 47 28c0 0 118 154 118 154c0 0 296 -474 296 -474c10.667 -16 25 -26 43 -30c18 -4 35.667 -1.333 53 8c16 10.667 26 25 30 43c4 18 1.333 35.667 -8 53c0 0 -350 560 -350 560c-13.333 21.333 -32 32 -56 32c0 0 -2 2 -2 2"
+                ></path>
+              </svg>
+              {$t("Convert")}
+              <span class="badge badge-soft">Image</span>
+              <span class="opacity-20">|</span>
+              <span class="badge badge-soft">Figma</span>
+              <span class="opacity-20">|</span>
+              <span class="badge badge-soft">Tailwind CSS</span>
+              <span class="opacity-20">|</span>
+              <span class="badge badge-soft">Bootstrap</span>
+              {$t("to daisyUI")}
+            </div>
           </div>
+
           <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
+            class="mt-9 flex flex-wrap items-center gap-3 transition-[opacity,transform] duration-700 [transition-delay:460ms] motion-reduce:transition-none"
+            class:translate-y-4={enhanced && !pageReady}
+            class:opacity-0={enhanced && !pageReady}
           >
-            index.html
+            <div class="aura aura-rainbow">
+              <a
+                class="btn btn-lg btn-neutral"
+                href={checkoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {@render keyIcon()}
+                {$t("Get the license")}
+              </a>
+            </div>
+            <a class="btn btn-lg" href="/blueprint/cursor/">
+              {@render bookIcon()}
+              {$t("Install guide")}
+            </a>
+          </div>
+
+          <p
+            class="mt-5 max-w-xl text-xs leading-relaxed text-base-content/45 transition-[opacity,transform] duration-700 [transition-delay:520ms] motion-reduce:transition-none"
+            class:translate-y-4={enhanced && !pageReady}
+            class:opacity-0={enhanced && !pageReady}
+          >
+            <span class="block">{$t("After purchase, your license key arrives by email.")}</span>
+            <span class="block">
+              {$t("Install the MCP server, add the key, and ask your agent to use Blueprint.")}
+            </span>
+          </p>
+        </div>
+
+        <div
+          class="relative mt-8 min-w-0 transition-[opacity,transform] duration-700 [transition-delay:300ms] motion-reduce:transition-none lg:mt-0"
+          class:translate-y-5={enhanced && !pageReady}
+          class:opacity-0={enhanced && !pageReady}
+        >
+          <!-- DO NOT TRANSLATE ANYTHING INSIDE THIS DIV -->
+          <div
+            class="mockup-window content-none overflow-visible border border-neutral-content/10 bg-neutral text-neutral-content shadow-2xl"
+            dir="ltr"
+          >
+            <div
+              class="relative space-y-3 p-4 font-mono text-[0.6875rem] leading-[1.4] sm:p-6 sm:text-xs"
+            >
+              <div
+                class="absolute end-6 -mt-[6.5rem] inline-grid grid-cols-[.5rem_1fr_.5rem] grid-rows-[.5rem_1fr_.5rem] align-middle"
+              >
+                <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
+                <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
+                <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
+                <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
+                <div
+                  class="font-title m-1 bg-blue-600 px-1 text-3xl font-semibold text-white [grid-area:1/1/4/4] sm:text-5xl"
+                >
+                  BLUEPRINT
+                </div>
+              </div>
+              <div class="flex gap-3 text-neutral-content">
+                <span class="shrink-0 text-warning">❯</span>
+                <span>Make a landing page for my iOS food tracking app. Use Blueprint MCP</span>
+              </div>
+              <div class="flex gap-3 text-neutral-content/65">
+                <span class="shrink-0">●</span>
+                <span>
+                  Blueprint plans the page context, directs the design, retrieves accurate component
+                  syntax, generates the code, and verifies the result.
+                </span>
+              </div>
+
+              <div class="space-y-2.5">
+                {#each expertRoles as role}
+                  <div class="grid grid-cols-[1rem_1fr] gap-2">
+                    <span class="text-success">⏺</span>
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-1.5 text-neutral-content">
+                        <img
+                          src={role.icon}
+                          alt=""
+                          class="size-4 shrink-0 object-contain"
+                          width="64"
+                          height="64"
+                        />
+                        <span>{role.terminalName}</span>
+                      </div>
+                      <div class="mt-0.5 flex gap-2 text-neutral-content/40">
+                        <span>⎿</span>
+                        <span>{role.output}</span>
+                      </div>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+
+              <div
+                class="flex gap-3 border-t border-neutral-content/10 pt-3 text-neutral-content/65"
+              >
+                <span class="shrink-0 text-success">●</span>
+                <span>Finished in 5m 10s · All tests passed · 100/100</span>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="py-2 opacity-50">Ask AI...</div>
-        <div class="flex justify-between">
-          <div class="flex gap-2 leading-none">
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
+      </div>
+    </section>
+
+    <section
+      class="border-b border-base-300"
+      aria-label={$t("Interface examples")}
+      use:trackBlueprintCarouselVisibility
+      data-blueprint-carousel
+    >
+      <div class="mx-auto flex max-w-7xl items-center px-4 py-24 sm:px-8">
+        <div
+          class="grid w-full items-center gap-8 lg:grid-cols-[minmax(0,1fr)_5rem_minmax(0,3fr)] lg:gap-6"
+        >
+          <div class="order-2 min-w-0 lg:order-1">
+            <p
+              class="mb-3 hidden font-mono text-xs tracking-[0.18em] text-base-content/60 uppercase lg:block"
             >
-              Agent
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-              </svg>
-            </div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
+              {$t("MADE WITH BLUEPRINT MCP")}
+            </p>
+            <!-- DO NOT TRANSLATE ANYTHING INSIDE THIS DIV -->
+            <div
+              class="grid overflow-hidden bg-blue-600 text-white shadow-2xl lg:min-h-72"
+              dir="ltr"
+            >
+              {#key blueprintCarouselPromptIndex}
+                <div
+                  class="flex flex-col p-5 [grid-area:1/1] sm:p-6 lg:min-h-72"
+                  in:fly={{
+                    x: reducedMotion ? 0 : blueprintCarouselDirection * 32,
+                    duration: reducedMotion ? 0 : 260,
+                  }}
                 >
-                </path>
-              </svg>
-              daisyUI Blueprint
-            </span>
+                  <div class="font-mono text-[0.625rem] tracking-wider text-white/60 uppercase">
+                    One-shot prompt
+                  </div>
+                  <p class="mt-3 font-mono leading-relaxed max-sm:text-sm" aria-live="polite">
+                    <span class="sr-only">
+                      {blueprintPreviews[blueprintCarouselPromptIndex].prompt}
+                    </span>
+                    <span aria-hidden="true">{blueprintTypedPrompt}</span>
+                    {#if blueprintPromptTyping}
+                      <span
+                        class="ms-0.5 inline-block h-[1em] w-[0.45em] animate-pulse bg-current align-[-0.1em]"
+                        aria-hidden="true"
+                      ></span>
+                    {/if}
+                  </p>
+                  <div class="mt-auto flex items-center justify-between pt-6 text-xs">
+                    <span class="font-mono text-white/60 uppercase">Model</span>
+                    <span>{blueprintPreviews[blueprintCarouselPromptIndex].model}</span>
+                  </div>
+                </div>
+              {/key}
+            </div>
+
+            <div class="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                class="btn btn-square rounded-none border-blue-600 bg-blue-600 text-white"
+                aria-label={$t("Prev")}
+                onclick={() => changeBlueprintPreview(-1)}
+                onpointerenter={pauseBlueprintCarouselAutoplay}
+                onpointerleave={resumeBlueprintCarouselAutoplay}
+                data-blueprint-prev
+              >
+                <svg
+                  class="size-5 rtl:-scale-x-100"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m15 18-6-6 6-6"></path>
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="btn btn-square rounded-none border-blue-600 bg-blue-600 text-white"
+                aria-label={$t("Next")}
+                onclick={() => changeBlueprintPreview(1)}
+                onpointerenter={pauseBlueprintCarouselAutoplay}
+                onpointerleave={resumeBlueprintCarouselAutoplay}
+                data-blueprint-next
+              >
+                <svg
+                  class="size-5 rtl:-scale-x-100"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m9 18 6-6-6-6"></path>
+                </svg>
+              </button>
+            </div>
           </div>
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
+
+          <div
+            class="hidden h-20 items-center justify-center lg:order-2 lg:flex"
+            aria-hidden="true"
+          >
             <svg
-              class="size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 18 18"
-              fill="currentColor"
+              class="w-20 rotate-90 overflow-visible lg:rotate-0 rtl:-scale-x-100"
+              viewBox="0 0 80 32"
+              fill="none"
             >
               <path
-                d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
+                d="M2 16h70M60 4l12 12-12 12"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
               ></path>
             </svg>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="-mt-20 w-full px-4 pt-20 md:px-20!">
-  <!-- features -->
 
-  <div class="mt-50 mb-16 flex justify-center">
-    <div class="font-title text-base-content/50 text-center text-2xl">
-      daisyUI <div
-        class="inline-grid grid-cols-[.5rem_1fr_.5rem] grid-rows-[.5rem_1fr_.5rem] align-middle"
-      >
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-        <div class="font-title m-1 bg-blue-600 px-1 font-semibold text-white [grid-area:1/1/4/4]">
-          BLUEPRINT
-        </div>
-      </div>
-      : The essential {$t("MCP server")}
-      <br />
-      {$t("for higher code quality, faster LLM results, and less token cost")}
-    </div>
-  </div>
-
-  <!-- <div class="mx-auto mb-40 grid max-w-2xl place-items-center justify-around gap-10 md:grid-cols-3!">
-    <div class="flex flex-col items-center gap-2">
-      <div class="font-title text-7xl tabular-nums">74</div>
-      <div class="text-xs opacity-50">Resource files</div>
-    </div>
-    <div class="flex flex-col items-center gap-2">
-      <div class="font-title text-7xl tabular-nums">5.6k</div>
-      <div class="text-xs opacity-50">Lines of context (on demand)</div>
-    </div>
-    <div class="flex flex-col items-center gap-2">
-      <div class="font-title text-7xl tabular-nums">4</div>
-      <div class="text-xs opacity-50">Prompts</div>
-    </div>
-  </div> -->
-
-  <div class="flex justify-center">
-    <div class="mb-40 flex flex-wrap items-center justify-center gap-16">
-      <img
-        class="bg-base-200 border-base-300 size-16 border p-4"
-        src="https://img.daisyui.com/images/logos/cursor.webp?2"
-        alt="Cursor"
-      />
-      <img
-        class="bg-base-200 border-base-300 size-16 border p-4"
-        src="https://img.daisyui.com/images/logos/vscode.webp"
-        alt="VS Code"
-      />
-      <img
-        class="bg-base-200 border-base-300 size-16 border p-4"
-        src="https://img.daisyui.com/images/logos/claude.webp"
-        alt="Claude"
-      />
-      <img
-        class="bg-base-200 border-base-300 size-16 border p-4"
-        src="https://img.daisyui.com/images/logos/zed.webp"
-        alt="Zed"
-      />
-      <img
-        class="bg-base-200 border-base-300 size-16 border p-4"
-        src="https://img.daisyui.com/images/logos/cline.webp"
-        alt="Cline"
-      />
-      <img
-        class="bg-base-200 border-base-300 size-16 border p-4"
-        src="https://img.daisyui.com/images/logos/chatgpt.webp"
-        alt="ChatGPT"
-      />
-      <img
-        class="bg-base-200 border-base-300 size-16 border p-4"
-        src="https://img.daisyui.com/images/logos/windsurf.webp"
-        alt="Windsurf"
-      />
-    </div>
-  </div>
-
-  <!-- Code Snippets -->
-
-  <div class="relative mt-20 flex items-start gap-12 max-lg:flex-col lg:flex-row-reverse lg:gap-24">
-    <div class="grow">
-      <div class="prose pt-10">
-        <span class="badge badge-soft mb-4">
-          <svg
-            class="size-4 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            ><path
-              d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-            ></path></svg
+          <div
+            class="relative order-1 aspect-video w-full min-w-0 overflow-visible [perspective:200rem] lg:order-3"
+            onpointerenter={pauseBlueprintCarouselAutoplay}
+            onpointerleave={resumeBlueprintCarouselAutoplay}
           >
-          {$t("MCP Tool")}
-        </span>
-        <h2
-          id="feature-1"
-          class="font-title mt-0 mb-8 text-xl leading-none font-semibold lg:text-3xl"
-        >
-          <div class="text-base-content/30 me-2 inline-block tabular-nums lg:me-4 lg:-ml-12">
-            1.
+            <div
+              bind:this={blueprintCarouselCard}
+              class="relative size-full [transform:translate3d(0,0,0)] [transform-style:preserve-3d] [will-change:transform] after:absolute after:-bottom-8 after:left-1/2 after:block after:h-4 after:w-[70%] after:rounded-full after:bg-[#0006] after:content-[''] after:[translate:-50%_0] after:blur-[1rem]"
+              data-blueprint-card
+            >
+              <div
+                class="absolute inset-0 overflow-hidden rounded-lg border-2 border-black bg-base-200 [backface-visibility:hidden] [transform:translateZ(0.1px)] [will-change:transform]"
+                data-blueprint-face="front"
+              >
+                <a
+                  class="absolute inset-0"
+                  href={blueprintPreviewPngUrl(blueprintPreviews[blueprintCarouselIndex].file)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    use:panBlueprintPreviewImage
+                    src={`${blueprintPreviewBaseUrl}/sm/${blueprintPreviews[blueprintCarouselIndex].file}?`}
+                    alt={$t(blueprintPreviews[blueprintCarouselIndex].alt)}
+                    class="absolute top-0 left-1/2 h-auto w-full max-w-none -translate-x-1/2"
+                    loading="eager"
+                  />
+                </a>
+              </div>
+              <div
+                class="absolute inset-0 overflow-hidden rounded-lg border-2 border-black bg-base-200 [backface-visibility:hidden] [transform:rotateY(180deg)_translateZ(0.1px)] [will-change:transform]"
+                data-blueprint-face="back"
+                aria-hidden="true"
+              >
+                <img
+                  src={`${blueprintPreviewBaseUrl}/sm/${blueprintPreviews[blueprintCarouselTargetIndex].file}?`}
+                  alt=""
+                  class="absolute top-0 left-1/2 h-auto w-full max-w-none -translate-x-1/2"
+                  loading="eager"
+                />
+              </div>
+            </div>
           </div>
-          {$t("On-demand code Snippets")}
-        </h2>
+        </div>
+      </div>
+    </section>
+
+    <section class="border-b border-base-300 bg-base-200/45">
+      <div class="mx-auto max-w-7xl px-4 py-12 sm:px-8 lg:py-16">
+        <p class="text-center font-mono text-xs tracking-[0.18em] text-base-content/45 uppercase">
+          {$t("Blueprint MCP server works with coding agents")}
+        </p>
+        <div class="flex justify-center">
+          <div class="my-20 flex flex-wrap items-center justify-center gap-16">
+            {#each codingTools as tool}
+              <div
+                class="group tooltip flex size-14 items-center justify-center rounded-field border border-base-300 bg-base-200 p-3 sm:size-16 lg:size-20"
+                data-tip={tool.name}
+              >
+                <img
+                  class="size-6 object-contain transition-transform duration-700 group-hover:scale-[1.3] motion-reduce:transition-none sm:size-7 lg:size-9"
+                  style="transition-timing-function: linear(0, 0.009 1.1%, 0.035 2.2%, 0.141 4.8%, 0.281 7.4%, 0.723 15.5%, 0.943 20.6%, 1.068 25.6%, 1.087 28.7%, 1.084 32.2%, 1.038 39.4%, 0.984 47.8%, 0.994 59.3%, 1.003 71.2%, 1)"
+                  src="https://img.daisyui.com/images/logos/{tool.icon}.svg"
+                  alt={tool.name}
+                  width="36"
+                  height="36"
+                  loading="lazy"
+                />
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section
+      id="problem"
+      use:revealOnScroll={"problem"}
+      class="scroll-mt-20 bg-neutral/90 text-neutral-content"
+    >
+      <div
+        class="mx-auto max-w-7xl px-4 py-24 transition-[opacity,transform] duration-700 motion-reduce:transition-none sm:px-8 lg:py-36"
+        class:translate-y-4={pageReady && !visibleSections.includes("problem")}
+        class:opacity-0={pageReady && !visibleSections.includes("problem")}
+      >
+        <div class="grid gap-8 lg:grid-cols-[1.1fr_.9fr] lg:items-end">
+          <div>
+            <div class="font-mono text-xs text-error">{$t("ALL WEBSITES LOOK THE SAME")}</div>
+            <h2
+              class="font-title mt-5 max-w-4xl text-6xl leading-[0.84] font-semibold tracking-[-0.055em] sm:text-8xl lg:text-9xl"
+            >
+              {$t("Sick of")} <span class="whitespace-nowrap">{$t("AI slop?")}</span>
+            </h2>
+          </div>
+          <p class="max-w-2xl text-lg leading-relaxed text-neutral-content/60 lg:pb-2">
+            {$t(
+              "AI-generated sites arrive with outdated dependencies, stale syntax, copy-paste layouts, the same color palettes, purple gradients, inconsistent spacing, and a structure so mediocre that no one wants to use it.",
+            )}
+          </p>
+        </div>
+
+        <div
+          class="relative mt-16 transition-[opacity,transform] duration-700 [transition-delay:120ms] motion-reduce:transition-none lg:pr-[40%]"
+          class:scale-[0.985]={pageReady && !visibleSections.includes("problem")}
+          class:opacity-0={pageReady && !visibleSections.includes("problem")}
+          dir="ltr"
+        >
+          <img
+            src="https://img.daisyui.com/images/content/ai-slop.webp"
+            alt={$t("Example of a generic AI-generated landing page")}
+            class="w-full rounded-lg object-cover object-top outline outline-error"
+            width="1200"
+            height="1311"
+            loading="lazy"
+          />
+
+          <div class="pointer-events-none absolute inset-0 hidden lg:block">
+            <svg
+              class="absolute inset-0 size-full text-error"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <line x1="48" y1="11" x2="63" y2="11" vector-effect="non-scaling-stroke"></line>
+                <line x1="39.6" y1="19.5" x2="63" y2="19.5" vector-effect="non-scaling-stroke"
+                ></line>
+                <line x1="48" y1="34.5" x2="63" y2="36" vector-effect="non-scaling-stroke"></line>
+                <line x1="28.2" y1="29" x2="63" y2="28.5" vector-effect="non-scaling-stroke"></line>
+                <line x1="51" y1="50" x2="63" y2="50" vector-effect="non-scaling-stroke"></line>
+                <line x1="51" y1="58" x2="63" y2="59" vector-effect="non-scaling-stroke"></line>
+                <line x1="51" y1="80" x2="63" y2="80" vector-effect="non-scaling-stroke"></line>
+              </g>
+            </svg>
+
+            <span
+              class="absolute top-[11%] left-[48%] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-error bg-base-100"
+              aria-hidden="true"
+            ></span>
+            <span
+              class="absolute top-[19.5%] left-[39.6%] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-error bg-base-100"
+              aria-hidden="true"
+            ></span>
+            <span
+              class="absolute top-[34.5%] left-[48%] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-error bg-base-100"
+              aria-hidden="true"
+            ></span>
+            <span
+              class="absolute top-[29%] left-[28.2%] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-error bg-base-100"
+              aria-hidden="true"
+            ></span>
+            <span
+              class="absolute top-[50%] left-[51%] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-error bg-base-100"
+              aria-hidden="true"
+            ></span>
+            <span
+              class="absolute top-[58%] left-[51%] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-error bg-base-100"
+              aria-hidden="true"
+            ></span>
+            <span
+              class="absolute top-[80%] left-[51%] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-error bg-base-100"
+              aria-hidden="true"
+            ></span>
+
+            <div
+              class="absolute top-[11%] left-[63%] -translate-y-1/2 whitespace-nowrap border border-error bg-error px-3 py-2 text-xs font-semibold text-error-content xl:text-sm"
+            >
+              {$t("The most mediocre layout")}
+            </div>
+            <div
+              class="absolute top-[19.5%] left-[63%] -translate-y-1/2 whitespace-nowrap border border-error bg-error px-3 py-2 text-xs font-semibold text-error-content xl:text-sm"
+            >
+              {$t("Boring, inauthentic color palette")}
+            </div>
+            <div
+              class="absolute top-[36%] left-[63%] -translate-y-1/2 whitespace-nowrap border border-error bg-error px-3 py-2 text-xs font-semibold text-error-content xl:text-sm"
+            >
+              {$t("Looks like every other AI-generated site")}
+            </div>
+            <div
+              class="absolute top-[28.5%] left-[63%] -translate-y-1/2 whitespace-nowrap border border-error bg-error px-3 py-2 text-xs font-semibold text-error-content xl:text-sm"
+            >
+              {$t("Inconsistent components, no design system")}
+            </div>
+            <div
+              class="absolute top-[50%] left-[63%] -translate-y-1/2 whitespace-nowrap border border-error bg-error px-3 py-2 text-xs font-semibold text-error-content xl:text-sm"
+            >
+              {$t("Inaccessible, inefficient, and unmaintainable code")}
+            </div>
+            <div
+              class="absolute top-[59%] left-[63%] -translate-y-1/2 whitespace-nowrap border border-error bg-error px-3 py-2 text-xs font-semibold text-error-content xl:text-sm"
+            >
+              {$t("AI slop content and lack of structure")}
+            </div>
+            <div
+              class="absolute top-[80%] left-[63%] -translate-y-1/2 whitespace-nowrap border border-error bg-error px-3 py-2 text-xs font-semibold text-error-content xl:text-sm"
+            >
+              {$t("Purple gradients everywhere")}
+            </div>
+          </div>
+
+          <div class="mt-5 grid gap-2 lg:hidden">
+            {#each ["The most mediocre layout", "Boring, inauthentic color palette", "Looks like every other AI-generated site", "Inconsistent components, no design system", "Inaccessible, inefficient, and unmaintainable code", "AI slop content and lack of structure", "Purple gradients everywhere"] as issue}
+              <div class="border border-error px-3 py-2 text-sm text-error">
+                <span class="me-2" aria-hidden="true">×</span>{$t(issue)}
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section use:revealOnScroll={"skills"} class="bg-neutral text-neutral-content">
+      <div
+        class="mx-auto grid max-w-7xl gap-14 px-4 py-24 transition-[opacity,transform] duration-700 motion-reduce:transition-none sm:px-8 lg:grid-cols-[.82fr_1.18fr] lg:py-36"
+        class:translate-y-4={pageReady && !visibleSections.includes("skills")}
+        class:opacity-0={pageReady && !visibleSections.includes("skills")}
+      >
         <div>
-          <p>{$t("Blueprint MCP server provides curated daisyUI code snippets to your LLM")}</p>
-          <p>{$t("Including:")}</p>
-          <ul class="list-none p-0">
-            <li>
-              <svg
-                class="text-success me-2 inline-block size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                ><g fill="none"
-                  ><path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path></g
-                ></svg
-              >
-              {$t("Component examples")}
+          <div class="font-mono text-xs text-error">
+            {$t("TRYING TO FIX THE SLOP WITH INSTRUCTIONS?")}
+          </div>
+          <h2
+            class="font-title mt-5 text-5xl leading-[0.88] font-semibold tracking-[-0.05em] sm:text-7xl lg:text-8xl"
+          >
+            {$t("Your LLM ignores the instructions and skills.")}
+          </h2>
+          <p class="mt-8 max-w-xl text-base leading-relaxed text-neutral-content/60 sm:text-lg">
+            {$t(
+              "Agent skills are collections of instructions and rules. Check the logs and the pattern is familiar: the model reads a few files, skips the rest, ignores inconvenient rules, and moves on.",
+            )}
+          </p>
+          <p class="mt-4 max-w-xl text-base leading-relaxed text-neutral-content/60 sm:text-lg">
+            {$t(
+              "UI work needs more context than most tasks. Yet as the instruction set grows, the chance of selective reading grows with it.",
+            )}
+          </p>
+        </div>
+
+        <div class="min-w-0">
+          <div class="stats stats-vertical w-full border border-neutral-content/10 bg-neutral">
+            <div class="stat">
+              <div class="stat-title text-neutral-content/45">{$t("Skill files inspected")}</div>
+              <div class="stat-value font-title mb-2 text-2xl text-neutral-content sm:text-3xl">
+                {$t("Ignored 40% of the rules")}
+              </div>
+              <div class="stat-desc whitespace-normal text-error">
+                <span class="block">{$t("Skipped 23 files due to overconfidence")}</span>
+                <span class="mt-1 block">
+                  {$t("Ignored the rules and treated them as suggestions only")}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- DO NOT TRANSLATE ANYTHING INSIDE THIS DIV -->
+          <ul class="list mt-5 border-y border-neutral-content/10 font-mono text-xs">
+            <li class="list-row items-center rounded-none border-b border-neutral-content/10">
+              <span class="status status-success status-lg" aria-hidden="true"></span>
+              <span class="grow text-neutral-content">SKILL.md</span>
+              <span class="text-success">read</span>
             </li>
-            <li>
-              <svg
-                class="text-success me-2 inline-block size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                ><g fill="none"
-                  ><path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path></g
-                ></svg
-              >
-              {$t("Page layouts")}
+            <li class="list-row items-center rounded-none border-b border-neutral-content/10">
+              <span class="status status-success status-lg" aria-hidden="true"></span>
+              <span class="grow text-neutral-content">references/components.md</span>
+              <span class="text-success">Lines 1 to 120</span>
             </li>
-            <li>
-              <svg
-                class="text-success me-2 inline-block size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                ><g fill="none"
-                  ><path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path></g
-                ></svg
-              >
-              {$t("UI blocks")}
+            <li class="list-row items-center rounded-none border-b border-neutral-content/10">
+              <span class="status status-success status-lg" aria-hidden="true"></span>
+              <span class="grow text-neutral-content">references/themes.md</span>
+              <span class="text-success">Lines 1 to 120</span>
             </li>
-            <li>
-              <svg
-                class="text-success me-2 inline-block size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                ><g fill="none"
-                  ><path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path></g
-                ></svg
-              >
-              {$t("Useful combinations")}
+            <li
+              class="list-row items-center rounded-none border-b border-neutral-content/10 opacity-55"
+            >
+              <span class="status status-error status-lg" aria-hidden="true"></span>
+              <span class="grow">references/design.md</span>
+              <span>partially ignored</span>
+            </li>
+            <li
+              class="list-row items-center rounded-none border-b border-neutral-content/10 opacity-55"
+            >
+              <span class="status status-error status-lg" aria-hidden="true"></span>
+              <span class="grow">references/anti-patterns.md</span>
+              <span>partially ignored</span>
+            </li>
+            <li
+              class="list-row items-center rounded-none border-b border-neutral-content/10 opacity-55"
+            >
+              <span class="status status-error status-lg" aria-hidden="true"></span>
+              <span class="grow">references/accessibility.md</span>
+              <span>partially ignored</span>
+            </li>
+            <li
+              class="list-row items-center rounded-none border-b border-neutral-content/10 opacity-55"
+            >
+              <span class="status status-error status-lg" aria-hidden="true"></span>
+              <span class="grow">references/responsive.md</span>
+              <span>partially ignored</span>
+            </li>
+            <li class="list-row items-center rounded-none opacity-55">
+              <span class="status status-error status-lg" aria-hidden="true"></span>
+              <span class="grow">references/quality-checks.md</span>
+              <span>skipped</span>
             </li>
           </ul>
 
-          <p>
-            It also <span
-              class="inline-block -rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
+          <div role="alert" class="alert alert-error alert-soft mt-5">
+            <span aria-hidden="true">!</span>
+            <span
+              >{$t(
+                "The model continued without following the rules it was expected to follow.",
+              )}</span
             >
-              {$t("provides actual picture")}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="border-b border-neutral-content/10 bg-neutral/90 text-neutral-content">
+      <div class="mx-auto max-w-7xl px-4 py-24 sm:px-8 lg:py-36">
+        <div class="mx-auto max-w-[40rem]">
+          <div class="font-mono text-xs text-error uppercase">
+            {$t("Wasted time, wasted effort, wasted tokens")}
+          </div>
+          <h2
+            class="font-title mt-5 text-5xl leading-[0.9] font-semibold tracking-[-0.05em] text-balance sm:text-7xl"
+          >
+            {$t("Tired of wasting tokens?")}
+            <img
+              src="https://img.daisyui.com/images/emoji/0080_disappointed-face_1f61e.png"
+              alt="Use less AI tokens"
+              class="-mt-4 inline-block size-16 rotate-[5deg]"
+              loading="lazy"
+            />
+          </h2>
+          <div class="mt-10 space-y-5 text-base leading-relaxed text-neutral-content/65 sm:text-lg">
+            <p>
+              {$t(
+                "Without clear instructions, AI creates the same generic UI for everyone. That's why trends like purple buttons and gradients quickly became overused.",
+              )}
+            </p>
+            <p>
+              {$t(
+                "Making the design unique takes many prompts, additional edits, wasted time, and LOTS of tokens.",
+              )}
+            </p>
+          </div>
+          <p class="font-title mt-10 text-2xl leading-snug font-semibold text-balance sm:text-3xl">
+            <span class="block">{$t("What if...")}</span>
+            <span class="block">
+              {$t("you could one-shot a unique, original, and functional UI without any effort?")}
             </span>
-            {$t(
-              "of the components to help the LLM better understand the design system, and generate a more accurate code.",
-            )}
           </p>
         </div>
       </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black p-4 text-xs text-white/70 max-md:mx-auto sm:w-120"
-    >
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using <span class="text-blue-500">daisyUI Blueprint</span> MCP
-      </div>
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
+    </section>
 
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div>Received 4 components from MCP:</div>
-          <div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              toggle
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              filter
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              modal
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              drawer
-            </span>
-          </div>
-          <div>Components preview:</div>
-          <div class="flex- my-2 columns-2 items-start gap-2">
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/toggle.png"
-                alt="button"
-              />
-            </div>
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/modal.png"
-                alt="button"
-              />
-            </div>
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/filter.png"
-                alt="button"
-              />
-            </div>
-            <div class="mb-2 rounded-lg bg-white/10 p-2 outline outline-black">
-              <img
-                src="https://img.daisyui.com/images/components-screenshot/drawer.png"
-                alt="button"
-              />
-            </div>
-          </div>
-
-          <div>
-            <svg
-              class="text-success inline-block size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 48 48"
-            >
-              <g fill="none">
-                <path
-                  d="M10 24L20 34L40 14"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </g>
-            </svg>
-            Analyzed code snippets, layouts, UI blocks and usage examples.
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white">
-          <svg
-            class="size-3 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <g
-              stroke-linejoin="round"
-              stroke-linecap="round"
-              stroke-width="2"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path d="M16 18L22 12 16 6"></path>
-              <path d="M8 6L2 12 8 18"></path>
-            </g>
-          </svg>
-          index.html
-          <span class="text-green-400">+50</span>
-          <span class="text-red-400">-1</span>
-        </span>
-      </div>
-
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-        >
-          <g fill="none">
-            <path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path>
-          </g>
-        </svg>
-        Page generated successfully with daisyUI code snippets.
-      </div>
-
-      <!-- AI input -->
-      <div class="rounded-box border border-white/5 bg-white/5 p-2">
-        <div class="flex gap-2 leading-none">
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg class="size-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
+    <section class="overflow-hidden border-b border-base-300 py-20 sm:py-28">
+      <div class="mx-auto max-w-7xl px-2 text-center sm:px-6">
+        <p class="font-title mb-8 text-3xl font-semibold tracking-tight sm:text-5xl">
+          {$t("No slop. No skip. No waste.")}
+        </p>
+        <div class="mb-4 inline-grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
+          <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
+          <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
+          <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
+          <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
+          <div class="[grid-area:1/1/4/4]">
+            <div>
+              <h2
+                class="group font-title m-2 text-[clamp(2.5rem,12vw,8rem)] leading-none font-semibold text-white"
+                style="
+                  background-image: linear-gradient(#3B72FE 1px, transparent 1px), linear-gradient(90deg, #3B72FE 1px, transparent 1px), linear-gradient(#3B72FE 0.5px, transparent 0.5px), linear-gradient(90deg, #3B72FE 0.5px, #155dfc 0.5px);
+                  background-size: 50px 50px, 50px 50px, 10px 10px, 10px 10px;
+                  background-position: -2px -2px, -2px -2px, -1px -1px, -1px -1px;"
               >
-                <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
-              </g>
-            </svg>
-          </div>
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            index.html
-          </div>
-        </div>
-        <div class="py-2 opacity-50">Ask AI...</div>
-        <div class="flex justify-between">
-          <div class="flex gap-2 leading-none">
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              Agent
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-              </svg>
-            </div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
+                <div
+                  class="flex size-full bg-transparent px-4 transition-colors duration-2000 group-hover:bg-blue-600"
                 >
-                </path>
-              </svg>
-              daisyUI Blueprint
-            </span>
-          </div>
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg
-              class="size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 18 18"
-              fill="currentColor"
-            >
-              <path
-                d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
-              ></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="sm:bg-base-300 rounded-box mt-30 mb-10 max-sm:-mx-4 sm:px-4 sm:py-20">
-    <div class="mx-auto aspect-[16/10.05] max-h-[80vh] w-auto overflow-hidden sm:rounded-xl">
-      <iframe
-        class="h-full w-full"
-        src="https://www.youtube.com/embed/ICmVdS-sJKU?mute=1&autoplay=0&controls=1&rel=0&modestbranding=1&loop=1&playlist=ICmVdS-sJKU"
-        title="Blueprint {$t('MCP server')}"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen
-      ></iframe>
-    </div>
-  </div>
-
-  <!-- {$t("Design system resources")} -->
-
-  <div class="relative mt-20 flex items-start gap-12 max-lg:flex-col lg:flex-row-reverse lg:gap-24">
-    <div class="grow">
-      <div class="prose pt-10">
-        <span class="badge badge-soft mb-4">
-          <svg
-            class="size-4 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 1792 1792"
-            fill="currentColor"
-          >
-            <path
-              d="M428 336h825q75 0 75 75v900q0 25-18 43l-64 64q-8 8-13 5.5t-5-12.5V461q0-10-7.5-17.5T1203 436H503q-25 0-43 18l-64 64q-8 8-5.5 13t12.5 5h700q10 0 17.5 7.5t7.5 17.5v950q0 10-7.5 17.5t-17.5 7.5H253q-10 0-17.5-7.5T228 1511V536q0-25 18-43l139-139q18-18 43-18z"
-            ></path>
-          </svg>
-          {$t("MCP Resource")}
-        </span>
-        <h2
-          id="feature-2"
-          class="font-title mt-0 mb-8 text-xl leading-none font-semibold lg:text-3xl"
-        >
-          <div class="text-base-content/30 me-2 inline-block tabular-nums lg:me-4 lg:-ml-12">
-            2.
-          </div>
-          {$t("Design system resources")}
-        </h2>
-        <div>
-          <p>
-            Blueprint {$t("MCP server")} provides specific details about each component. Including
-            <span
-              class="inline-block -rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-              >{$t("dimensions")}</span
-            >
-            &nbsp;
-            <span
-              class="inline-block rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-              >{$t("spacing")}</span
-            >
-            &nbsp;
-            <span
-              class="inline-block -rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-              >{$t("variants")}</span
-            >
-            &nbsp;
-            <span
-              class="inline-block rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]"
-              >{$t("variables")}</span
-            >
-            {$t("and more")}
-          </p>
-          <p>
-            {$t(
-              "This helps the LLM to better understand the design system and generate a higher quality UI. Knowing the exact size of components, their variants and how they they look like in practice, the LLM can make more informed decisions when generating code instead of guessing the styles just by looking at the name of the component.",
-            )}
-          </p>
-        </div>
-      </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black p-4 text-xs text-white/70 max-md:mx-auto sm:w-120"
-    >
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using <span class="text-blue-500">daisyUI Blueprint</span> MCP
-      </div>
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div>Received checkbox component from daisyUI Blueprint MCP server.</div>
-
-          <div>
-            <svg
-              class="text-success inline-block size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 48 48"
-            >
-              <g fill="none">
-                <path
-                  d="M10 24L20 34L40 14"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </g>
-            </svg>
-            Reading design system specs for daisyUI checkbox component.
-          </div>
-        </div>
-      </div>
-      <div>
-        According to daisyUI design system specs, the checkbox component is 24px by 24px. That's why
-        the alignment looks off. Let's use checkbox-sm variant instead, so it fits better with the
-        other form elements.
-      </div>
-      <div>
-        <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white">
-          <svg
-            class="size-3 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <g
-              stroke-linejoin="round"
-              stroke-linecap="round"
-              stroke-width="2"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path d="M16 18L22 12 16 6"></path>
-              <path d="M8 6L2 12 8 18"></path>
-            </g>
-          </svg>
-          index.html
-          <span class="text-green-400">+1</span>
-          <span class="text-red-400">-1</span>
-        </span>
-      </div>
-
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-        >
-          <g fill="none">
-            <path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path>
-          </g>
-        </svg>
-        Checkbox component updated to checkbox-sm variant successfully. Now the design looks perfect.
-      </div>
-
-      <!-- AI input -->
-      <div class="rounded-box border border-white/5 bg-white/5 p-2">
-        <div class="flex gap-2 leading-none">
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg class="size-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
-              </g>
-            </svg>
-          </div>
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            index.html
-          </div>
-        </div>
-        <div class="py-2 opacity-50">Ask AI...</div>
-        <div class="flex justify-between">
-          <div class="flex gap-2 leading-none">
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              Agent
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-              </svg>
+                  BLUEPRINT
+                </div>
+              </h2>
             </div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                >
-                </path>
-              </svg>
-              daisyUI Blueprint
-            </span>
           </div>
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg
-              class="size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 18 18"
-              fill="currentColor"
+        </div>
+        <p class="font-title mt-8 text-2xl font-semibold tracking-tight sm:text-4xl">
+          {$t("Meet the Blueprint MCP tools")}
+        </p>
+        <div class="mt-6 flex flex-wrap justify-center gap-5">
+          {#each expertRoles as role}
+            <div class="group tooltip" data-tip={$t(role.name)}>
+              <img
+                src={role.icon}
+                alt={$t(role.name)}
+                class="size-10 object-contain transition-transform duration-700 group-hover:scale-[1.3] motion-reduce:transition-none sm:size-20"
+                style="transition-timing-function: linear(0, 0.009 1.1%, 0.035 2.2%, 0.141 4.8%, 0.281 7.4%, 0.723 15.5%, 0.943 20.6%, 1.068 25.6%, 1.087 28.7%, 1.084 32.2%, 1.038 39.4%, 0.984 47.8%, 0.994 59.3%, 1.003 71.2%, 1)"
+                width="80"
+                height="80"
+                loading="lazy"
+              />
+            </div>
+          {/each}
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow" class="scroll-mt-16 border-b border-base-300 bg-base-200/45">
+      <div class="mx-auto max-w-7xl px-4 pt-24 sm:px-8 lg:pt-36">
+        <div class="grid gap-10 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
+          <div>
+            <div class="font-mono text-xs text-success">{$t("THE REAL SOLUTION")}</div>
+            <h2
+              class="font-title mt-5 text-5xl leading-[0.88] font-semibold tracking-[-0.05em] sm:text-7xl lg:text-8xl"
             >
-              <path
-                d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
-              ></path>
-            </svg>
+              {$t("Blueprint fixes that.")}
+            </h2>
+          </div>
+          <div class="lg:pb-2">
+            <p class="text-2xl leading-tight font-semibold sm:text-3xl">
+              {$t("Introducing a mandatory MCP workflow.")}
+            </p>
+            <p class="mt-5 max-w-2xl leading-relaxed text-base-content/60">
+              {$t(
+                "Every tool has a defined job and a strict execution order. Each tool provides the necessary resources and functionality to your agent. The agent must follow these rules sequentially. It cannot skip steps, invent component syntax, or mark unfinished work as complete.",
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-14 max-w-full overflow-x-auto">
+          <div
+            class="stats stats-vertical w-full min-w-0 bg-base-300 shadow-sm sm:stats-horizontal"
+          >
+            <div class="stat">
+              <div class="stat-title">{$t("Rules and principles")}</div>
+              <div class="stat-value font-title tabular-nums">168</div>
+              <div class="stat-desc">{$t("LLM is forced to read and follow")}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-title">{$t("Page architectures")}</div>
+              <div class="stat-value font-title tabular-nums">211</div>
+              <div class="stat-desc">{$t("Matched by intent")}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-title">{$t("daisyUI components")}</div>
+              <div class="stat-value font-title tabular-nums">68</div>
+              <div class="stat-desc">{$t("Syntax, examples, code snippets")}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-title">{$t("Final inspection")}</div>
+              <div class="stat-value font-title tabular-nums">100/100</div>
+              <div class="stat-desc">{$t("Finds and fixes visual issues")}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-16 grid gap-12 pb-24 lg:grid-cols-[.92fr_1.08fr] lg:gap-16 lg:pb-36">
+          <div class="lg:pb-[70svh]">
+            {#each expertRoles as role, index}
+              <article
+                use:trackTool={index}
+                class="flex min-h-[54svh] flex-col justify-center border-t border-base-300 py-16 last:border-b"
+              >
+                <div class="flex flex-wrap items-center gap-3">
+                  <span class="font-mono text-xs text-base-content/35">{role.number}</span>
+                  <span class="badge badge-soft badge-sm">{$t(role.requirement)}</span>
+                </div>
+                <h3 class="font-title mt-6 text-4xl leading-none font-bold sm:text-5xl">
+                  <img
+                    src={role.icon}
+                    alt=""
+                    class="me-1 inline-block size-[1em] object-contain align-bottom"
+                    width="64"
+                    height="64"
+                    loading="lazy"
+                  />
+                  {$t(role.name)}
+                </h3>
+                <p class="mt-6 max-w-xl text-lg leading-relaxed text-base-content/65">
+                  {$t(role.description)}
+                </p>
+                <p class="mt-5 max-w-xl text-sm leading-relaxed text-base-content/45">
+                  {$t(role.detail)}
+                </p>
+              </article>
+            {/each}
+          </div>
+
+          <div class="min-w-0 lg:order-none">
+            <div class="sticky top-24 py-16">
+              {#each expertRoles as role, roleIndex}
+                {#each role.cards as card, cardIndex}
+                  {@const position = floatingCardPosition(roleIndex, cardIndex)}
+                  {#if position === "top-left"}
+                    <div
+                      class="pointer-events-none absolute start-0 top-[30%] z-2 hidden -translate-x-1/2 -rotate-2 rtl:translate-x-1/2 rtl:rotate-2 lg:block"
+                      aria-hidden="true"
+                    >
+                      {@render floatingToolCard(role, card, toolCardMotion[roleIndex][cardIndex])}
+                    </div>
+                  {:else if position === "top-right"}
+                    <div
+                      class="pointer-events-none absolute end-0 top-[30%] z-2 hidden translate-x-1/2 rotate-2 rtl:-translate-x-1/2 rtl:-rotate-2 lg:block"
+                      aria-hidden="true"
+                    >
+                      {@render floatingToolCard(role, card, toolCardMotion[roleIndex][cardIndex])}
+                    </div>
+                  {:else if position === "middle-left"}
+                    <div
+                      class="pointer-events-none absolute start-0 top-1/2 z-2 hidden -translate-x-1/2 -translate-y-1/2 -rotate-2 rtl:translate-x-1/2 rtl:rotate-2 lg:block"
+                      aria-hidden="true"
+                    >
+                      {@render floatingToolCard(role, card, toolCardMotion[roleIndex][cardIndex])}
+                    </div>
+                  {:else if position === "middle-right"}
+                    <div
+                      class="pointer-events-none absolute end-0 top-1/2 z-2 hidden translate-x-1/2 -translate-y-1/2 rotate-2 rtl:-translate-x-1/2 rtl:-rotate-2 lg:block"
+                      aria-hidden="true"
+                    >
+                      {@render floatingToolCard(role, card, toolCardMotion[roleIndex][cardIndex])}
+                    </div>
+                  {:else if position === "bottom-left"}
+                    <div
+                      class="pointer-events-none absolute start-0 bottom-[30%] z-2 hidden -translate-x-1/2 -rotate-2 rtl:translate-x-1/2 rtl:rotate-2 lg:block"
+                      aria-hidden="true"
+                    >
+                      {@render floatingToolCard(role, card, toolCardMotion[roleIndex][cardIndex])}
+                    </div>
+                  {:else}
+                    <div
+                      class="pointer-events-none absolute end-0 bottom-[30%] z-2 hidden translate-x-1/2 rotate-2 rtl:-translate-x-1/2 rtl:-rotate-2 lg:block"
+                      aria-hidden="true"
+                    >
+                      {@render floatingToolCard(role, card, toolCardMotion[roleIndex][cardIndex])}
+                    </div>
+                  {/if}
+                {/each}
+              {/each}
+
+              <!-- DO NOT TRANSLATE ANYTHING INSIDE THIS DIV -->
+              <div
+                class="mockup-window max-h-[calc(100svh-7rem)] overflow-y-auto border border-neutral-content/10 bg-neutral text-neutral-content shadow-2xl"
+                dir="ltr"
+                aria-hidden="true"
+              >
+                <div
+                  class="min-h-[29rem] space-y-3 p-4 pt-10 font-mono text-[0.6875rem] leading-[1.45] sm:p-6 sm:pt-10 sm:text-xs"
+                >
+                  <div class="flex gap-3">
+                    <span class="shrink-0 text-warning">❯</span>
+                    <span>Generate a landing page for my iOS food tracking app</span>
+                  </div>
+                  <div class="flex gap-3 text-neutral-content/65">
+                    <span class="shrink-0 text-success">●</span>
+                    <span>Using the daisyUI Blueprint MCP server</span>
+                  </div>
+
+                  {#if toolProgress.every((progress) => progress === 0)}
+                    <div class="flex gap-3 pt-3 text-neutral-content/35">
+                      <span>↓</span>
+                      <span>Scroll to run the mandatory workflow</span>
+                    </div>
+                  {/if}
+
+                  <div class="space-y-3 pt-1">
+                    {#each expertRoles as role, index}
+                      {#if toolProgress[index] > 0}
+                        <div class="grid grid-cols-[1rem_1fr] gap-2">
+                          <span class="text-success">⏺</span>
+                          <div class="min-w-0">
+                            <div class="break-words text-neutral-content">
+                              <img
+                                src={role.icon}
+                                alt=""
+                                class="me-1 inline-block size-4 object-contain align-middle"
+                                width="64"
+                                height="64"
+                                loading="lazy"
+                              />
+                              {typedToolCall(role, index)}
+                              {#if toolProgress[index] < 1}
+                                <span class="text-warning">▋</span>
+                              {/if}
+                            </div>
+                            {#if toolProgress[index] >= 1}
+                              <div class="mt-1 flex gap-2 text-neutral-content/40">
+                                <span>⎿</span>
+                                <span>{role.output}</span>
+                              </div>
+                            {/if}
+                          </div>
+                        </div>
+                      {/if}
+                    {/each}
+                  </div>
+
+                  {#if toolProgress[expertRoles.length - 1] >= 1}
+                    <div
+                      class="flex gap-3 border-t border-neutral-content/10 pt-4 text-neutral-content/65"
+                      transition:fly={{
+                        y: reducedMotion ? 0 : 10,
+                        duration: reducedMotion ? 0 : 340,
+                      }}
+                    >
+                      <span class="shrink-0 text-success">●</span>
+                      <span>Finished in 5m 10s · Using the daisyUI Blueprint MCP server</span>
+                    </div>
+                  {/if}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <!-- Figma to daisyUI -->
-
-  <div class="relative mt-20 flex items-start gap-12 max-lg:flex-col lg:flex-row-reverse lg:gap-24">
-    <div class="grow">
-      <div class="prose pt-10">
-        <span class="badge badge-soft mb-4">
-          <svg
-            class="size-4 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            ><path
-              d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-            ></path></svg
-          >
-          {$t("MCP Tool")}
-        </span>
-        <span class="badge badge-soft mb-4">{$t("Experimental")}</span>
-        <h2
-          id="feature-3"
-          class="font-title mt-0 mb-8 text-xl leading-none font-semibold lg:text-3xl"
-        >
-          <div class="text-base-content/30 me-2 inline-block tabular-nums lg:me-4 lg:-ml-12">
-            3.
-          </div>
-          {$t("Convert Figma ➞ daisyUI")}
-        </h2>
-        <div>
-          <p>{$t("Blueprint MCP server can generate a daisyUI code based on a figma design.")}</p>
-          <p>
-            {@html $t(
-              "This is done by processing the properties of the design elements, their styles, and layout from <span class='inline-block -rotate-1 bg-green-100 px-2 py-0.25 font-semibold text-black shadow-[2px_2px_var(--color-green-200)]'>Figma API to LLM</span> along with daisyUI component details so LLM can map the design to the closest daisyUI components.",
-            )}
-          </p>
-          <p>
-            <span class="font-semibold">{$t("This works with any UI made with Figma")}</span>, {$t(
-              "whether if you used the official daisyUI Figma library or not. AI will understand the context of the elements and generate the closest possible daisyUI code.",
-            )}
-          </p>
-          <p>
-            {$t(
-              "For example if have a login form in Figma made with Material design, AI will still be able to generate the equivalent daisyUI code for it!",
-            )}
-          </p>
-          <p class="alert alert-soft alert-info">
-            {$t("The accuracy of the generated code depends on the complexity of the design.")}
-            <br />
-            {$t(
-              "For best result, convert smaller pieces of the design at a time, instead of the whole page.",
-            )}
-          </p>
+    <section
+      id="convert"
+      use:revealOnScroll={"convert"}
+      class="scroll-mt-16 border-b border-base-300"
+    >
+      <div
+        class="mx-auto max-w-7xl px-4 py-24 transition-[opacity,transform] duration-700 motion-reduce:transition-none sm:px-8 lg:py-36"
+        class:translate-y-4={pageReady && !visibleSections.includes("convert")}
+        class:opacity-0={pageReady && !visibleSections.includes("convert")}
+      >
+        <div class="grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
           <div>
-            <a class="btn btn-neutral btn-wide" href="/blueprint/figma/">
-              <svg
-                class="inline-block size-3"
-                viewBox="-64 0 384 384"
-                version="1.1"
-                xmlns="http://www.w3.org/2000/svg"
-                preserveAspectRatio="xMidYMid"
-                ><g
-                  ><path
-                    d="M64,384 C99.328,384 128,355.328 128,320 L128,256 L64,256 C28.672,256 0,284.672 0,320 C0,355.328 28.672,384 64,384 Z"
-                    fill="#0ACF83"
-                  ></path><path
-                    d="M0,192 C0,156.672 28.672,128 64,128 L128,128 L128,256 L64,256 C28.672,256 0,227.328 0,192 Z"
-                    fill="#A259FF"
-                  ></path><path
-                    d="M0,64 C0,28.672 28.672,0 64,0 L128,0 L128,128 L64,128 C28.672,128 0,99.328 0,64 Z"
-                    fill="#F24E1E"
-                  ></path><path
-                    d="M128,0 L192,0 C227.328,0 256,28.672 256,64 C256,99.328 227.328,128 192,128 L128,128 L128,0 Z"
-                    fill="#FF7262"
-                  ></path><path
-                    d="M256,192 C256,227.328 227.328,256 192,256 C156.672,256 128,227.328 128,192 C128,156.672 156.672,128 192,128 C227.328,128 256,156.672 256,192 Z"
-                    fill="#1ABCFE"
-                  ></path></g
-                ></svg
+            <h2
+              class="font-title mt-5 text-5xl leading-[0.88] font-semibold tracking-[-0.05em] sm:text-7xl lg:text-8xl"
+            >
+              {$t("Convert everything to daisyUI.")}
+            </h2>
+          </div>
+          <p
+            class="max-w-2xl text-lg leading-relaxed text-base-content/60 lg:justify-self-end lg:pb-2"
+          >
+            {$t(
+              "Blueprint gives your agent the tools to understand the source first. It extracts the structure, chooses the matching daisyUI components, supplies exact snippets, and checks the conversion when the code is done.",
+            )}
+          </p>
+        </div>
+
+        <div class="mt-16 grid auto-rows-[minmax(17rem,auto)] gap-4 lg:grid-cols-12">
+          <article
+            class="card card-border overflow-hidden bg-neutral text-start text-neutral-content lg:col-span-7 lg:row-span-2"
+          >
+            <div class="card-body justify-between p-7 sm:p-10">
+              <div>
+                <div class="flex items-center gap-4" aria-label={$t("Figma converts to daisyUI")}>
+                  <span
+                    class="flex size-14 items-center justify-center rounded-box bg-neutral-content/10 p-3"
+                  >
+                    <svg
+                      class="size-full"
+                      width="56"
+                      height="56"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      role="img"
+                      aria-label="Figma"
+                    >
+                      <g
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                        stroke-width="1.75"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <circle cx="15" cy="12" r="3"></circle>
+                        <path
+                          d="M9 21C10.6569 21 12 19.6569 12 18V15H9C7.34315 15 6 16.3431 6 18C6 19.6569 7.34315 21 9 21Z"
+                        ></path>
+                        <path d="M12 9V15H9C7.34315 15 6 13.6569 6 12C6 10.3431 7.34315 9 9 9H12Z"
+                        ></path>
+                        <path d="M12 3V9H9C7.34315 9 6 7.65685 6 6C6 4.34315 7.34315 3 9 3H12Z"
+                        ></path>
+                        <path d="M12 3V9H15C16.6569 9 18 7.65685 18 6C18 4.34315 16.6569 3 15 3H12Z"
+                        ></path>
+                      </g>
+                    </svg>
+                  </span>
+                  <span class="text-neutral-content/40">{@render arrowIcon()}</span>
+                  <span
+                    class="flex size-14 items-center justify-center rounded-box bg-neutral-content/10 p-3"
+                  >
+                    <img
+                      src="https://img.daisyui.com/images/daisyui/mark.svg"
+                      alt="daisyUI"
+                      class="size-full object-contain"
+                      width="56"
+                      height="56"
+                      loading="lazy"
+                    />
+                  </span>
+                </div>
+                <h3 class="font-title mt-9 text-4xl leading-none font-bold sm:text-5xl">
+                  {$t(conversionTools[0].title)}
+                </h3>
+                <p class="mt-5 max-w-xl leading-relaxed text-neutral-content/60">
+                  {$t(conversionTools[0].description)}
+                </p>
+              </div>
+
+              <div class="mt-14 border-t border-neutral-content/10 pt-6 font-mono text-xs">
+                <div class="text-neutral-content/40">{conversionTools[0].input}</div>
+                <div class="mt-3 flex items-center gap-3 text-success">
+                  {@render arrowIcon()}
+                  <span>{conversionTools[0].output}</span>
+                </div>
+                <div class="mt-7 break-all text-[0.6875rem] text-neutral-content/30">
+                  {conversionTools[0].toolName}
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card card-border bg-base-200 text-start lg:col-span-5">
+            <div class="card-body p-7 sm:p-8">
+              <div
+                class="flex items-center gap-4"
+                aria-label={$t("Tailwind CSS converts to daisyUI")}
               >
-              {$t("Figma API setup guide")}
+                <span
+                  class="flex size-14 items-center justify-center rounded-box border border-base-300 bg-base-100 p-3"
+                >
+                  <svg
+                    class="size-full"
+                    width="56"
+                    height="56"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 54 33"
+                    role="img"
+                    aria-label="Tailwind CSS"
+                  >
+                    <g clip-path="url(#blueprint-tailwind-clip)">
+                      <path
+                        fill="currentColor"
+                        fill-rule="evenodd"
+                        d="M27 0c-7.2 0-11.7 3.6-13.5 10.8 2.7-3.6 5.85-4.95 9.45-4.05 2.054.513 3.522 2.004 5.147 3.653C30.744 13.09 33.808 16.2 40.5 16.2c7.2 0 11.7-3.6 13.5-10.8-2.7 3.6-5.85 4.95-9.45 4.05-2.054-.513-3.522-2.004-5.147-3.653C36.756 3.11 33.692 0 27 0zM13.5 16.2C6.3 16.2 1.8 19.8 0 27c2.7-3.6 5.85-4.95 9.45-4.05 2.054.514 3.522 2.004 5.147 3.653C17.244 29.29 20.308 32.4 27 32.4c7.2 0 11.7-3.6 13.5-10.8-2.7 3.6-5.85 4.95-9.45 4.05-2.054-.513-3.522-2.004-5.147-3.653C23.256 19.31 20.192 16.2 13.5 16.2z"
+                        clip-rule="evenodd"
+                      ></path>
+                    </g>
+                    <defs>
+                      <clipPath id="blueprint-tailwind-clip">
+                        <path fill="#fff" d="M0 0h54v32.4H0z"></path>
+                      </clipPath>
+                    </defs>
+                  </svg>
+                </span>
+                <span class="text-base-content/35">{@render arrowIcon()}</span>
+                <span
+                  class="flex size-14 items-center justify-center rounded-box border border-base-300 bg-base-100 p-3"
+                >
+                  <img
+                    src="https://img.daisyui.com/images/daisyui/mark.svg"
+                    alt="daisyUI"
+                    class="size-full object-contain"
+                    width="56"
+                    height="56"
+                    loading="lazy"
+                  />
+                </span>
+              </div>
+              <h3 class="font-title mt-7 text-3xl leading-none font-bold">
+                {$t(conversionTools[1].title)}
+              </h3>
+              <p class="mt-4 leading-relaxed text-base-content/60">
+                {$t(conversionTools[1].description)}
+              </p>
+            </div>
+          </article>
+
+          <article class="card card-border bg-base-100 text-start lg:col-span-5">
+            <div class="card-body p-7 sm:p-8">
+              <div
+                class="flex items-center gap-4"
+                aria-label={$t("Screenshot converts to daisyUI")}
+              >
+                <span
+                  class="flex size-14 items-center justify-center rounded-box border border-base-300 bg-base-200 p-3 text-base-content/70"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    class="size-full"
+                    aria-hidden="true"
+                  >
+                    <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                    <path d="m7 16 3.2-3.2 2.3 2.3 2.4-2.4L18 16"></path>
+                    <circle cx="8" cy="9" r="1.2"></circle>
+                  </svg>
+                  <span class="sr-only">{$t("Screenshot")}</span>
+                </span>
+                <span class="text-base-content/35">{@render arrowIcon()}</span>
+                <span
+                  class="flex size-14 items-center justify-center rounded-box border border-base-300 bg-base-200 p-3"
+                >
+                  <img
+                    src="https://img.daisyui.com/images/daisyui/mark.svg"
+                    alt="daisyUI"
+                    class="size-full object-contain"
+                    width="56"
+                    height="56"
+                    loading="lazy"
+                  />
+                </span>
+              </div>
+              <h3 class="font-title mt-7 text-3xl leading-none font-bold">
+                {$t(conversionTools[2].title)}
+              </h3>
+              <p class="mt-4 leading-relaxed text-base-content/60">
+                {$t(conversionTools[2].description)}
+              </p>
+            </div>
+          </article>
+
+          <article class="card card-border bg-base-100 text-start lg:col-span-5">
+            <div class="card-body p-7 sm:p-8">
+              <div class="flex items-center gap-4" aria-label={$t("Bootstrap converts to daisyUI")}>
+                <span
+                  class="flex size-14 items-center justify-center rounded-box border border-base-300 bg-base-200 p-3"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 118 94"
+                    class="size-full"
+                    width="56"
+                    height="56"
+                    role="img"
+                    aria-label="Bootstrap"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M24.509 0c-6.733 0-11.715 5.893-11.492 12.284.214 6.14-.064 14.092-2.066 20.577C8.943 39.365 5.547 43.485 0 44.014v5.972c5.547.529 8.943 4.649 10.951 11.153 2.002 6.485 2.28 14.437 2.066 20.577C12.794 88.106 17.776 94 24.51 94H93.5c6.733 0 11.714-5.893 11.491-12.284-.214-6.14.064-14.092 2.066-20.577 2.009-6.504 5.396-10.624 10.943-11.153v-5.972c-5.547-.529-8.934-4.649-10.943-11.153-2.002-6.484-2.28-14.437-2.066-20.577C105.214 5.894 100.233 0 93.5 0H24.508zM80 57.863C80 66.663 73.436 72 62.543 72H44a2 2 0 01-2-2V24a2 2 0 012-2h18.437c9.083 0 15.044 4.92 15.044 12.474 0 5.302-4.01 10.049-9.119 10.88v.277C75.317 46.394 80 51.21 80 57.863zM60.521 28.34H49.948v14.934h8.905c6.884 0 10.68-2.772 10.68-7.727 0-4.643-3.264-7.207-9.012-7.207zM49.948 49.2v16.458H60.91c7.167 0 10.964-2.876 10.964-8.281 0-5.406-3.903-8.178-11.425-8.178H49.948z"
+                      fill="#712cf9"
+                    ></path>
+                  </svg>
+                </span>
+                <span class="text-base-content/35">{@render arrowIcon()}</span>
+                <span
+                  class="flex size-14 items-center justify-center rounded-box border border-base-300 bg-base-200 p-3"
+                >
+                  <img
+                    src="https://img.daisyui.com/images/daisyui/mark.svg"
+                    alt="daisyUI"
+                    class="size-full object-contain"
+                    width="56"
+                    height="56"
+                    loading="lazy"
+                  />
+                </span>
+              </div>
+              <h3 class="font-title mt-7 text-3xl leading-none font-bold">
+                {$t(conversionTools[3].title)}
+              </h3>
+              <p class="mt-4 leading-relaxed text-base-content/60">
+                {$t(conversionTools[3].description)}
+              </p>
+            </div>
+          </article>
+
+          <article
+            class="card card-border overflow-hidden bg-neutral text-start text-neutral-content lg:col-span-7"
+          >
+            <div class="card-body p-7 sm:p-9">
+              <div
+                class="flex items-center gap-4"
+                aria-label={$t("Image palette converts to daisyUI")}
+              >
+                <span
+                  class="grid size-14 grid-cols-2 overflow-hidden rounded-box border border-neutral-content/15"
+                  role="img"
+                  aria-label={$t("Image color palette")}
+                >
+                  <span class="bg-secondary"></span>
+                  <span class="bg-accent"></span>
+                  <span class="bg-neutral"></span>
+                  <span class="bg-base-100"></span>
+                </span>
+                <span class="text-neutral-content/45">{@render arrowIcon()}</span>
+                <span
+                  class="flex size-14 items-center justify-center rounded-box bg-neutral-content/10 p-3"
+                >
+                  <img
+                    src="https://img.daisyui.com/images/daisyui/mark.svg"
+                    alt="daisyUI"
+                    class="size-full object-contain"
+                    width="56"
+                    height="56"
+                    loading="lazy"
+                  />
+                </span>
+              </div>
+              <h3 class="font-title mt-7 text-3xl leading-[0.95] font-bold sm:text-4xl">
+                {$t("Picture color palette to a daisyUI theme")}
+              </h3>
+              <p class="mt-4 max-w-2xl leading-relaxed text-neutral-content/65">
+                {$t(conversionTools[4].description)}
+              </p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="demos" use:revealOnScroll={"demos"} class="border-b border-base-300">
+      <div
+        class="mx-auto max-w-[96rem] px-4 py-24 transition-[opacity,transform] duration-700 motion-reduce:transition-none sm:px-8 lg:py-36"
+        class:translate-y-4={pageReady && !visibleSections.includes("demos")}
+        class:opacity-0={pageReady && !visibleSections.includes("demos")}
+      >
+        <div class="mx-auto grid max-w-7xl gap-10 lg:items-end">
+          <div>
+            <h2
+              class="font-title mt-5 text-5xl leading-[0.88] font-semibold tracking-[-0.05em] sm:text-7xl lg:text-8xl"
+            >
+              {$t("See Blueprint in action")}
+            </h2>
+          </div>
+          <p
+            class="max-w-2xl text-lg leading-relaxed text-base-content/60 lg:justify-self-end lg:pb-2"
+          >
+            {$t(
+              "Watch Blueprint's MCP server create unique, authentic UIs from a simple prompt. The server gives your AI agent the context it needs: design-system principles, code snippets, and UX direction. When the page is finished, Blueprint inspects the code and fixes visual issues.",
+            )}
+          </p>
+        </div>
+
+        <div class="carousel carousel-center mt-16 w-full gap-4">
+          <div id="demo-1" class="carousel-item w-[92%] md:w-[68%] lg:w-[49%]">
+            <article class="card card-border w-full overflow-hidden bg-base-100">
+              <div class="aspect-video bg-base-200">
+                <iframe
+                  class="h-full w-full"
+                  src="https://www.youtube.com/embed/4ZYKxkibJT0?autoplay=0&controls=1&rel=0&modestbranding=1"
+                  title={$t("Blueprint MCP server converts a Figma design to daisyUI")}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  loading="lazy"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            </article>
+          </div>
+          <div id="demo-2" class="carousel-item w-[92%] md:w-[68%] lg:w-[49%]">
+            <article class="card card-border w-full overflow-hidden bg-base-100">
+              <div class="aspect-video bg-base-200">
+                <iframe
+                  class="h-full w-full"
+                  src="https://www.youtube.com/embed/S4Xz2iEMaAA?autoplay=0&controls=1&rel=0&modestbranding=1"
+                  title={$t("Blueprint MCP server converts Tailwind CSS to daisyUI")}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  loading="lazy"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section
+      id="compare"
+      use:revealOnScroll={"compare"}
+      class="scroll-mt-16 border-b border-base-300 bg-base-200/45"
+    >
+      <div
+        class="mx-auto max-w-7xl px-4 py-24 transition-[opacity,transform] duration-700 motion-reduce:transition-none sm:px-8 lg:py-36"
+        class:translate-y-4={pageReady && !visibleSections.includes("compare")}
+        class:opacity-0={pageReady && !visibleSections.includes("compare")}
+      >
+        <div class="grid gap-10 lg:grid-cols-[auto_1fr] lg:items-end">
+          <div>
+            <div class="font-mono text-xs text-base-content/45">
+              {$t("COMPARE WITH OTHER OPTIONS")}
+            </div>
+            <h2
+              class="font-title mt-5 whitespace-nowrap text-4xl leading-[0.82] font-semibold tracking-[-0.06em] sm:text-7xl lg:text-8xl"
+            >
+              {$t("All-in-one.")}
+            </h2>
+          </div>
+          <p
+            class="max-w-2xl text-lg leading-relaxed text-base-content/60 lg:justify-self-end lg:pb-2"
+          >
+            {$t(
+              "Documentation context helps an LLM answer questions. Blueprint surrounds that official source with project setup, creative direction, page architecture, exact component retrieval, conversion workflows, and a final inspection gate.",
+            )}
+          </p>
+        </div>
+
+        <div class="mt-16 max-w-full overflow-x-auto border border-base-300 bg-base-100">
+          <table class="table table-sm min-w-[64rem]">
+            <caption class="sr-only">
+              {$t("Comparison of daisyUI Blueprint MCP, daisyUI Skill, Context7 MCP, and GitMCP")}
+            </caption>
+            <thead>
+              <tr>
+                {#each compareTable[0] as header, headerIndex}
+                  <th scope="col" class="text-start" class:bg-base-200={headerIndex === 1}>
+                    {@html header ? $t(header) : ""}
+                  </th>
+                {/each}
+              </tr>
+            </thead>
+            <tbody>
+              {#each compareTable.slice(1) as row}
+                <tr>
+                  {#each row as cell, cellIndex}
+                    {#if cellIndex === 0}
+                      <th scope="row" class="text-start font-medium">
+                        {@render comparisonCell(cell)}
+                      </th>
+                    {:else}
+                      <td class="text-start" class:bg-base-200={cellIndex === 1}>
+                        {@render comparisonCell(cell)}
+                      </td>
+                    {/if}
+                  {/each}
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="scroll-mt-16 border-b border-base-300">
+      <div
+        class="mx-auto grid max-w-7xl gap-14 px-4 py-24 sm:px-8 lg:grid-cols-[.7fr_1.3fr] lg:py-36"
+      >
+        <div>
+          <h2
+            class="font-title mt-5 text-7xl leading-[0.82] font-semibold tracking-[-0.06em] text-base-content/10 sm:text-8xl lg:text-9xl"
+          >
+            F.A.Q.
+          </h2>
+          <p class="mt-7 max-w-sm text-sm leading-relaxed text-base-content/55">
+            {$t("Need something else? Email")}
+            <a class="link link-hover" href="mailto:help@daisyui.com">help@daisyui.com</a>
+            {$t("and we will help.")}
+          </p>
+        </div>
+
+        <div class="divide-y divide-base-300 border-y border-base-300">
+          {#each faqItems as faq, index}
+            <div class="collapse collapse-plus rounded-none">
+              <input
+                type="radio"
+                name="blueprint-faq"
+                checked={index === 0}
+                aria-label={faq.question}
+              />
+              <div class="collapse-title px-1 text-base font-semibold">
+                {$t(faq.question)}
+              </div>
+              <div class="collapse-content px-1 text-sm leading-relaxed text-base-content/65">
+                <p class="pb-2">{$t(faq.answer)}</p>
+                {#if faq.href}
+                  <a
+                    class="link link-hover mb-4 inline-block font-medium"
+                    href={faq.href}
+                    target={faq.href.startsWith("http") ? "_blank" : undefined}
+                    rel={faq.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                  >
+                    {$t(faq.linkLabel)}
+                  </a>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+    </section>
+
+    <section class="-mb-20 bg-neutral text-neutral-content">
+      <div class="mx-auto max-w-7xl px-4 py-24 sm:px-8 lg:py-32">
+        <div class="grid gap-12 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            {@render blueprintWordmark()}
+            <p class="mt-10 font-mono text-xs tracking-[0.18em] text-neutral-content/45 uppercase">
+              {$t("The official daisyUI MCP server")}
+            </p>
+            <h2
+              class="font-title mt-5 max-w-5xl text-6xl leading-[0.85] font-semibold tracking-[-0.055em] sm:text-8xl lg:text-9xl"
+            >
+              {$t("The most powerful agentic UI workflow in an MCP server")}
+            </h2>
+          </div>
+          <div class="flex flex-wrap gap-3 lg:justify-end">
+            <a
+              class="btn btn-lg btn-primary"
+              href={checkoutUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {@render keyIcon()}
+              {$t("Get the license")}
+            </a>
+            <a class="btn btn-lg" href="/blueprint/cursor/">
+              {@render bookIcon()}
+              {$t("Install guide")}
             </a>
           </div>
         </div>
-      </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black p-4 text-xs text-white/70 max-md:mx-auto sm:w-120"
-    >
-      <div class="rounded-box border border-white/5 bg-white/5 p-4">
-        Convert this Figma frame to daisyUI
-        <div class="mt-[1em] break-all underline">
-          https://www.figma.com/file/ABCDEFG1234567/my-design?node-id=100%3A200
-        </div>
-      </div>
-      <div class="opacity-30">Thought for 1s</div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using daisyUI Blueprint <span class="text-blue-500">Figma to daisyUI</span>
-        MCP tool
-      </div>
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
 
         <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
+          role="note"
+          class="alert mt-12 border border-neutral-content/10 bg-neutral-content/5 text-neutral-content"
         >
-          <div class="flex justify-between">
-            <div>
-              <svg
-                class="inline-block size-3"
-                viewBox="-64 0 384 384"
-                version="1.1"
-                xmlns="http://www.w3.org/2000/svg"
-                preserveAspectRatio="xMidYMid"
-              >
-                <g>
-                  <path
-                    d="M64,384 C99.328,384 128,355.328 128,320 L128,256 L64,256 C28.672,256 0,284.672 0,320 C0,355.328 28.672,384 64,384 Z"
-                    fill="#0ACF83"
-                  >
-                  </path>
-                  <path
-                    d="M0,192 C0,156.672 28.672,128 64,128 L128,128 L128,256 L64,256 C28.672,256 0,227.328 0,192 Z"
-                    fill="#A259FF"
-                  >
-                  </path>
-                  <path
-                    d="M0,64 C0,28.672 28.672,0 64,0 L128,0 L128,128 L64,128 C28.672,128 0,99.328 0,64 Z"
-                    fill="#F24E1E"
-                  >
-                  </path>
-                  <path
-                    d="M128,0 L192,0 C227.328,0 256,28.672 256,64 C256,99.328 227.328,128 192,128 L128,128 L128,0 Z"
-                    fill="#FF7262"
-                  >
-                  </path>
-                  <path
-                    d="M256,192 C256,227.328 227.328,256 192,256 C156.672,256 128,227.328 128,192 C128,156.672 156.672,128 192,128 C227.328,128 256,156.672 256,192 Z"
-                    fill="#1ABCFE"
-                  >
-                  </path>
-                </g>
-              </svg>
-              Received Figma design nodes from Figma API.
-            </div>
-            <svg class="inline-block size-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"
-              ><path
-                d="M9.53,2.22c-.293-.293-.768-.293-1.061,0l-3.5,3.5c-.293,.293-.293,.768,0,1.061s.768,.293,1.061,0l2.97-2.97,2.97,2.97c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22c.293-.293,.293-.768,0-1.061l-3.5-3.5Z"
-                fill="currentColor"
-              ></path><path
-                d="M11.97,11.22l-2.97,2.97-2.97-2.97c-.293-.293-.768-.293-1.061,0s-.293,.768,0,1.061l3.5,3.5c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22l3.5-3.5c.293-.293,.293-.768,0-1.061s-.768-.293-1.061,0Z"
-                fill="currentColor"
-              ></path></svg
-            >
-          </div>
-        </div>
-      </div>
-
-      <div>
-        The figma design contains a pricing table with a toggle to switch between monthly and yearly
-        billing. There's a payment button at the bottom as well.
-      </div>
-
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using daisyUI Blueprint <span class="text-blue-500">Get Snippet</span>
-        MCP tool to get required daisyUI components that match the Figma design.
-      </div>
-
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div>Received 4 components from MCP server:</div>
-          <div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              card
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              toggle
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              divider
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              button
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        Perfect! Now we can generate the daisyUI code for the Figma design using these components.
-      </div>
-
-      <div>
-        <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white"
-          ><svg
-            class="size-3 fill-current opacity-50"
+          <svg
             xmlns="http://www.w3.org/2000/svg"
+            class="size-5 shrink-0 text-success"
             viewBox="0 0 24 24"
-            ><g
-              stroke-linejoin="round"
-              stroke-linecap="round"
-              stroke-width="2"
+            aria-hidden="true"
+          >
+            <path
               fill="none"
               stroke="currentColor"
-              ><path d="M16 18L22 12 16 6"></path><path d="M8 6L2 12 8 18"></path></g
-            ></svg
-          >
-          index.html <span class="text-green-400">+1</span>
-          <span class="text-red-400">-1</span></span
-        >
-      </div>
-
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
               stroke-linecap="round"
               stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        index.html file was updated successfully. The pricing table design from Figma is now implemented
-        using daisyUI components.
-      </div>
-
-      <!-- AI input -->
-      <div class="rounded-box border border-white/5 bg-white/5 p-2">
-        <div class="flex gap-2 leading-none">
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg class="size-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
-              </g>
-            </svg>
-          </div>
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            index.html
-          </div>
-        </div>
-        <div class="py-2 opacity-50">Ask AI...</div>
-        <div class="flex justify-between">
-          <div class="flex gap-2 leading-none">
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              Agent
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-              </svg>
-            </div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                >
-                </path>
-              </svg>
-              daisyUI Blueprint
-            </span>
-          </div>
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg
-              class="size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 18 18"
-              fill="currentColor"
-            >
-              <path
-                d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
-              ></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="sm:bg-base-300 rounded-box mt-30 mb-10 max-sm:-mx-4 sm:px-4 sm:py-20">
-    <div class="mx-auto aspect-[16/10.05] max-h-[80vh] w-auto overflow-hidden sm:rounded-xl">
-      <iframe
-        class="h-full w-full"
-        src="https://www.youtube.com/embed/4ZYKxkibJT0?mute=1&autoplay=0&controls=1&rel=0&modestbranding=1&loop=1&playlist=4ZYKxkibJT0"
-        title="Blueprint {$t('MCP server')}"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen
-      ></iframe>
-    </div>
-  </div>
-
-  <!-- Screenshot to daisyUI -->
-
-  <div class="relative mt-20 flex items-start gap-12 max-lg:flex-col lg:flex-row-reverse lg:gap-24">
-    <div class="grow">
-      <div class="prose pt-10">
-        <span class="badge badge-soft mb-4">
-          <svg
-            class="size-4 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M4.91307 2.65823C6.9877 2.38888 9.10296 2.25 11.2503 2.25C13.3974 2.25 15.5124 2.38885 17.5869 2.65815C19.5091 2.90769 20.8783 4.51937 20.9923 6.38495C20.6665 6.27614 20.3212 6.20396 19.96 6.17399C18.5715 6.05874 17.1673 6 15.75 6C14.3326 6 12.9285 6.05874 11.54 6.17398C9.1817 6.36971 7.5 8.36467 7.5 10.6082V14.8937C7.5 16.5844 8.45468 18.1326 9.9328 18.8779L7.28033 21.5303C7.06583 21.7448 6.74324 21.809 6.46299 21.6929C6.18273 21.5768 6 21.3033 6 21V16.9705C5.63649 16.9316 5.27417 16.8887 4.91308 16.8418C2.90466 16.581 1.5 14.8333 1.5 12.8626V6.63738C1.5 4.66672 2.90466 2.91899 4.91307 2.65823Z"
-              fill="currentColor"
-            ></path>
-            <path
-              d="M15.75 7.5C14.3741 7.5 13.0114 7.55702 11.6641 7.66884C10.1248 7.7966 9 9.10282 9 10.6082V14.8937C9 16.4014 10.128 17.7083 11.6692 17.8341C12.9131 17.9357 14.17 17.9912 15.4384 17.999L18.2197 20.7803C18.4342 20.9948 18.7568 21.059 19.037 20.9429C19.3173 20.8268 19.5 20.5533 19.5 20.25V17.8601C19.6103 17.8518 19.7206 17.8432 19.8307 17.8342C21.372 17.7085 22.5 16.4015 22.5 14.8938V10.6082C22.5 9.10283 21.3752 7.79661 19.836 7.66885C18.4886 7.55702 17.1259 7.5 15.75 7.5Z"
-              fill="currentColor"
+              stroke-width="3"
+              d="M5 12l5 5L20 7"
             ></path>
           </svg>
-          {$t("MCP Prompt")}
-        </span>
-        <h2
-          id="feature-4"
-          class="font-title mt-0 mb-8 text-xl leading-none font-semibold lg:text-3xl"
-        >
-          <div class="text-base-content/30 me-2 inline-block tabular-nums lg:me-4 lg:-ml-12">
-            4.
-          </div>
-          {$t("Convert Screenshot ➞ daisyUI")}
-        </h2>
-        <div>
-          <p>{$t("Attach a picture and receive daisyUI code!")}</p>
-          <p>
-            {$t(
-              "This is a detailed prompt that generates daisyUI + Tailwind CSS code from a screenshot.",
-            )}
-          </p>
-          <p>
-            {$t(
-              "The prompt guides the AI to analyze the screenshot, identify UI components, and generate the corresponding daisyUI code using existing daisyUI components which will be received from daisyUI Blueprint MCP server.",
-            )}
-          </p>
-          <p>
-            <span class="font-semibold">{$t("This works with any screenshot of a web UI")}</span>, {$t(
-              "whether it's from a design tool, a live website, or a mobile app. AI will understand the context of the elements and generate the closest daisyUI code.",
-            )}
-          </p>
-          <p class="alert alert-soft alert-info">
-            {$t(
-              "The accuracy of the generated code depends on the clarity and complexity of the screenshot.",
-            )}
-            <br />
-            {$t("For best result, use smaller parts of the UI instead of a full-page screenshot.")}
-          </p>
-        </div>
-      </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black p-4 text-xs text-white/70 max-md:mx-auto sm:w-120"
-    >
-      <div class="rounded-box border border-white/5 bg-white/5 p-4">
-        Convert this image to daisyUI code
-        <div class="mt-2 flex gap-2 leading-none">
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            <img
-              class="-ms-0.5 me-2 rounded-xs border border-white/10"
-              src="data:image/jpeg;base64,/9j/4QDKRXhpZgAATU0AKgAAAAgABgESAAMAAAABAAEAAAEaAAUAAAABAAAAVgEbAAUAAAABAAAAXgEoAAMAAAABAAIAAAITAAMAAAABAAEAAIdpAAQAAAABAAAAZgAAAAAAAABIAAAAAQAAAEgAAAABAAeQAAAHAAAABDAyMjGRAQAHAAAABAECAwCgAAAHAAAABDAxMDCgAQADAAAAAQABAACgAgAEAAAAAQAAABSgAwAEAAAAAQAAAA6kBgADAAAAAQAAAAAAAAAAAAD/2wCEAAEBAQEBAQIBAQIDAgICAwQDAwMDBAUEBAQEBAUGBQUFBQUFBgYGBgYGBgYHBwcHBwcICAgICAkJCQkJCQkJCQkBAQEBAgICBAICBAkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCf/dAAQAAv/AABEIAA4AFAMBIgACEQEDEQH/xAGiAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgsQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+gEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoLEQACAQIEBAMEBwUEBAABAncAAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2gAMAwEAAhEDEQA/AP57v2Rv2TPhN8a/2OvF3xG8R6XqN54l0zxKNPs3tLu5jj+z/wBn2s+z7PAwWR/Mkc7ipbBA6AAfJ+r/AAf8I2aS2v8AYniJ2ilkRZdLhluRwANs4mgmWMo3HybTwd3zCu5/Zy/bI+If7NPgbUfBngjS7e5/tHUHv/tUl1LC0TSW8FuUWNI2UjbADuLDrjHANeEeLfih408VeKdV8UxX13pTavdTXc9vZXk8cPmTyGWQgKy53OxYnFehlMqccQ3i7+z8rX6fd/S2PLrqu/4Z4zfWstnfTWcyeW8MjRsnzfKUO0j5sNwRjkZ9eaq4PpXSywNPK88zF3dizMxJJJ5JJPJJ7mo/sS03OHQ71M//2Q=="
-              alt="img"
-            />
-            settings-screenshot.png
-          </div>
-        </div>
-      </div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using <span class="text-blue-500">daisyUI Blueprint</span> MCP prompt
-      </div>
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div class="flex justify-between">
-            <div>Image to daisyUI conversion</div>
-            <svg class="inline-block size-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"
-              ><path
-                d="M9.53,2.22c-.293-.293-.768-.293-1.061,0l-3.5,3.5c-.293,.293-.293,.768,0,1.061s.768,.293,1.061,0l2.97-2.97,2.97,2.97c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22c.293-.293,.293-.768,0-1.061l-3.5-3.5Z"
-                fill="currentColor"
-              ></path><path
-                d="M11.97,11.22l-2.97,2.97-2.97-2.97c-.293-.293-.768-.293-1.061,0s-.293,.768,0,1.061l3.5,3.5c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22l3.5-3.5c.293-.293,.293-.768,0-1.061s-.768-.293-1.061,0Z"
-                fill="currentColor"
-              ></path></svg
-            >
-          </div>
-
-          <div>
-            You are analyzing a UI screenshot to recreate it using daisyUI components.
-            <br />Follow below steps strictly. If you miss any step, your code will be rejected.
-            <br />
-            <br />## Step By Step Instructions:
-            <br />1. Carefully examine the screenshot provided...
-          </div>
-          <div>
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              More
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"> </path>
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        The screenshot shows a settings page with a sidebar on the left and various settings options
-        on the right. Now we need to identify the daisyUI components required to build this UI.
-      </div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using daisyUI Blueprint <span class="text-blue-500">Get Snippet</span>
-        MCP tool to get required daisyUI components that match the UI from the screenshot.
-      </div>
-
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div>Received 7 components from MCP server:</div>
-          <div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              drawer
+          <span class="grow">
+            <span class="block">{$t("Your license key arrives by email.")}</span>
+            <span class="block">
+              {$t("Add it to the MCP server and ask your coding agent to use Blueprint.")}
             </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              navbar
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              modal
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              dropdown
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              button
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              toggle
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              menu
-            </span>
-          </div>
+          </span>
         </div>
       </div>
-
-      <div>Perfect! Now we can generate the daisyUI code using these components.</div>
-
-      <div>
-        <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white"
-          ><svg
-            class="size-3 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            ><g
-              stroke-linejoin="round"
-              stroke-linecap="round"
-              stroke-width="2"
-              fill="none"
-              stroke="currentColor"
-              ><path d="M16 18L22 12 16 6"></path><path d="M8 6L2 12 8 18"></path></g
-            ></svg
-          >
-          index.html <span class="text-green-400">+123</span>
-          <span class="text-red-400">-1</span></span
-        >
-      </div>
-
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        index.html file was updated successfully.
-      </div>
-
-      <!-- AI input -->
-      <div class="rounded-box border border-white/5 bg-white/5 p-2">
-        <div class="flex gap-2 leading-none">
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg class="size-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
-              </g>
-            </svg>
-          </div>
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            index.html
-          </div>
-        </div>
-        <div class="py-2 opacity-50">Ask AI...</div>
-        <div class="flex justify-between">
-          <div class="flex gap-2 leading-none">
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              Agent
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-              </svg>
-            </div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                >
-                </path>
-              </svg>
-              daisyUI Blueprint
-            </span>
-          </div>
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg
-              class="size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 18 18"
-              fill="currentColor"
-            >
-              <path
-                d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
-              ></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tailwind CSS to daisyUI -->
-
-  <div class="relative mt-20 flex items-start gap-12 max-lg:flex-col lg:flex-row-reverse lg:gap-24">
-    <div class="grow">
-      <div class="prose pt-10">
-        <span class="badge badge-soft mb-4">
-          <svg
-            class="size-4 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M4.91307 2.65823C6.9877 2.38888 9.10296 2.25 11.2503 2.25C13.3974 2.25 15.5124 2.38885 17.5869 2.65815C19.5091 2.90769 20.8783 4.51937 20.9923 6.38495C20.6665 6.27614 20.3212 6.20396 19.96 6.17399C18.5715 6.05874 17.1673 6 15.75 6C14.3326 6 12.9285 6.05874 11.54 6.17398C9.1817 6.36971 7.5 8.36467 7.5 10.6082V14.8937C7.5 16.5844 8.45468 18.1326 9.9328 18.8779L7.28033 21.5303C7.06583 21.7448 6.74324 21.809 6.46299 21.6929C6.18273 21.5768 6 21.3033 6 21V16.9705C5.63649 16.9316 5.27417 16.8887 4.91308 16.8418C2.90466 16.581 1.5 14.8333 1.5 12.8626V6.63738C1.5 4.66672 2.90466 2.91899 4.91307 2.65823Z"
-              fill="currentColor"
-            ></path>
-            <path
-              d="M15.75 7.5C14.3741 7.5 13.0114 7.55702 11.6641 7.66884C10.1248 7.7966 9 9.10282 9 10.6082V14.8937C9 16.4014 10.128 17.7083 11.6692 17.8341C12.9131 17.9357 14.17 17.9912 15.4384 17.999L18.2197 20.7803C18.4342 20.9948 18.7568 21.059 19.037 20.9429C19.3173 20.8268 19.5 20.5533 19.5 20.25V17.8601C19.6103 17.8518 19.7206 17.8432 19.8307 17.8342C21.372 17.7085 22.5 16.4015 22.5 14.8938V10.6082C22.5 9.10283 21.3752 7.79661 19.836 7.66885C18.4886 7.55702 17.1259 7.5 15.75 7.5Z"
-              fill="currentColor"
-            ></path>
-          </svg>
-          {$t("MCP Prompt")}
-        </span>
-        <h2
-          id="feature-5"
-          class="font-title mt-0 mb-8 text-xl leading-none font-semibold lg:text-3xl"
-        >
-          <div class="text-base-content/30 me-2 inline-block tabular-nums lg:me-4 lg:-ml-12">
-            5.
-          </div>
-          {$t("Convert Tailwind CSS ➞ daisyUI")}
-        </h2>
-        <div>
-          <p>{$t("Convert existing Tailwind CSS code to daisyUI components effortlessly!")}</p>
-          <p>
-            {$t(
-              "This is a detailed prompt provided by Blueprint MCP server that helps AI to analyze existing Tailwind CSS code blocks, identify UI components, that can be replaced with daisyUI components, then it uses daisyUI MCP server to get the required components and finally generates the updated code with daisyUI components.",
-            )}
-          </p>
-          <p>
-            {$t(
-              "This works best with well-structured Tailwind CSS code and clear design specifications. For really complicated parts of your HTML, adding comments to the code can also help the AI understand the semantics better and produce more accurate results.",
-            )}
-          </p>
-        </div>
-      </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black p-4 text-xs text-white/70 max-md:mx-auto sm:w-120"
-    >
-      <div class="rounded-box border border-white/5 bg-white/5 p-4">
-        Convert this page from Tailwind CSS to daisyUI
-        <div class="mt-2 flex gap-2 leading-none">
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            +page.svelte
-          </div>
-        </div>
-      </div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using <span class="text-blue-500">daisyUI Blueprint</span> MCP prompt
-      </div>
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div class="flex justify-between">
-            <div>Tailwind CSS to daisyUI conversion</div>
-            <svg class="inline-block size-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"
-              ><path
-                d="M9.53,2.22c-.293-.293-.768-.293-1.061,0l-3.5,3.5c-.293,.293-.293,.768,0,1.061s.768,.293,1.061,0l2.97-2.97,2.97,2.97c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22c.293-.293,.293-.768,0-1.061l-3.5-3.5Z"
-                fill="currentColor"
-              ></path><path
-                d="M11.97,11.22l-2.97,2.97-2.97-2.97c-.293-.293-.768-.293-1.061,0s-.293,.768,0,1.061l3.5,3.5c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22l3.5-3.5c.293-.293,.293-.768,0-1.061s-.768-.293-1.061,0Z"
-                fill="currentColor"
-              ></path></svg
-            >
-          </div>
-
-          <div>
-            You are analyzing a Tailwind CSS page to recreate it using daisyUI components.<br
-            />Follow below steps strictly. If you miss any step, your code will be rejected.<br
-            /><br />## Step By Step Instructions:<br />1. Carefully examine the each section of the
-            page...
-          </div>
-          <div>
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              More
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"> </path>
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        +page.svelte includes a settings UI with a sidebar on the left and various settings options
-        on the right. Now we need to identify the daisyUI components required to build this UI.
-      </div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using daisyUI Blueprint <span class="text-blue-500">Get Snippet</span>
-        MCP tool to get required daisyUI components that match the UI from the screenshot.
-      </div>
-
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div>Received 7 components from MCP server:</div>
-          <div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              drawer
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              navbar
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              modal
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              dropdown
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              button
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              toggle
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              menu
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div>Perfect! Now we can generate the daisyUI code using these components.</div>
-
-      <div>
-        <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white"
-          ><svg
-            class="size-3 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            ><g
-              stroke-linejoin="round"
-              stroke-linecap="round"
-              stroke-width="2"
-              fill="none"
-              stroke="currentColor"
-              ><path d="M16 18L22 12 16 6"></path><path d="M8 6L2 12 8 18"></path></g
-            ></svg
-          >
-          +page.svelte <span class="text-green-400">+123</span>
-          <span class="text-red-400">-1</span></span
-        >
-      </div>
-
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Done. All the the parts that could be converted to daisyUI components have been updated. Now the
-        page is smaller and uses less class names.
-      </div>
-
-      <!-- AI input -->
-      <div class="rounded-box border border-white/5 bg-white/5 p-2">
-        <div class="flex gap-2 leading-none">
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg class="size-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
-              </g>
-            </svg>
-          </div>
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            index.html
-          </div>
-        </div>
-        <div class="py-2 opacity-50">Ask AI...</div>
-        <div class="flex justify-between">
-          <div class="flex gap-2 leading-none">
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              Agent
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-              </svg>
-            </div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                >
-                </path>
-              </svg>
-              daisyUI Blueprint
-            </span>
-          </div>
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg
-              class="size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 18 18"
-              fill="currentColor"
-            >
-              <path
-                d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
-              ></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="sm:bg-base-300 rounded-box mt-30 mb-10 max-sm:-mx-4 sm:px-4 sm:py-20">
-    <div class="mx-auto aspect-[16/10.05] max-h-[80vh] w-auto overflow-hidden sm:rounded-xl">
-      <iframe
-        class="h-full w-full"
-        src="https://www.youtube.com/embed/S4Xz2iEMaAA?mute=1&autoplay=0&controls=1&rel=0&modestbranding=1&loop=1&playlist=S4Xz2iEMaAA"
-        title="Blueprint {$t('MCP server')}"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen
-      ></iframe>
-    </div>
-  </div>
-
-  <!-- Bootstrap to daisyUI -->
-
-  <div class="relative mt-20 flex items-start gap-12 max-lg:flex-col lg:flex-row-reverse lg:gap-24">
-    <div class="grow">
-      <div class="prose pt-10">
-        <span class="badge badge-soft mb-4">
-          <svg
-            class="size-4 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M4.91307 2.65823C6.9877 2.38888 9.10296 2.25 11.2503 2.25C13.3974 2.25 15.5124 2.38885 17.5869 2.65815C19.5091 2.90769 20.8783 4.51937 20.9923 6.38495C20.6665 6.27614 20.3212 6.20396 19.96 6.17399C18.5715 6.05874 17.1673 6 15.75 6C14.3326 6 12.9285 6.05874 11.54 6.17398C9.1817 6.36971 7.5 8.36467 7.5 10.6082V14.8937C7.5 16.5844 8.45468 18.1326 9.9328 18.8779L7.28033 21.5303C7.06583 21.7448 6.74324 21.809 6.46299 21.6929C6.18273 21.5768 6 21.3033 6 21V16.9705C5.63649 16.9316 5.27417 16.8887 4.91308 16.8418C2.90466 16.581 1.5 14.8333 1.5 12.8626V6.63738C1.5 4.66672 2.90466 2.91899 4.91307 2.65823Z"
-              fill="currentColor"
-            ></path>
-            <path
-              d="M15.75 7.5C14.3741 7.5 13.0114 7.55702 11.6641 7.66884C10.1248 7.7966 9 9.10282 9 10.6082V14.8937C9 16.4014 10.128 17.7083 11.6692 17.8341C12.9131 17.9357 14.17 17.9912 15.4384 17.999L18.2197 20.7803C18.4342 20.9948 18.7568 21.059 19.037 20.9429C19.3173 20.8268 19.5 20.5533 19.5 20.25V17.8601C19.6103 17.8518 19.7206 17.8432 19.8307 17.8342C21.372 17.7085 22.5 16.4015 22.5 14.8938V10.6082C22.5 9.10283 21.3752 7.79661 19.836 7.66885C18.4886 7.55702 17.1259 7.5 15.75 7.5Z"
-              fill="currentColor"
-            ></path>
-          </svg>
-          {$t("MCP Prompt")}
-        </span>
-        <h2
-          id="feature-6"
-          class="font-title mt-0 mb-8 text-xl leading-none font-semibold lg:text-3xl"
-        >
-          <div class="text-base-content/30 me-2 inline-block tabular-nums lg:me-4 lg:-ml-12">
-            6.
-          </div>
-          {$t("Convert Bootstrap ➞ daisyUI")}
-        </h2>
-        <div>
-          <p>{$t("Convert existing Bootstrap code to daisyUI components effortlessly!")}</p>
-          <p>
-            {$t(
-              "This is a detailed prompt provided by Blueprint MCP server that helps AI to analyze existing Bootstrap code blocks, identify UI components, that can be replaced with daisyUI components, then it uses daisyUI MCP server to get the required components and finally generates the updated code with daisyUI components.",
-            )}
-          </p>
-          <p>
-            {$t(
-              "This works best with well-structured Bootstrap code and clear design specifications. For really complicated parts of your HTML, adding comments to the code can also help the AI understand the semantics better and produce more accurate results.",
-            )}
-          </p>
-        </div>
-      </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black p-4 text-xs text-white/70 max-md:mx-auto sm:w-120"
-    >
-      <div class="rounded-box border border-white/5 bg-white/5 p-4">
-        Convert this page from Bootstrap to daisyUI
-        <div class="mt-2 flex gap-2 leading-none">
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            index.php
-          </div>
-        </div>
-      </div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using <span class="text-blue-500">daisyUI Blueprint</span> MCP prompt
-      </div>
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div class="flex justify-between">
-            <div>Bootstrap to daisyUI conversion</div>
-            <svg class="inline-block size-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"
-              ><path
-                d="M9.53,2.22c-.293-.293-.768-.293-1.061,0l-3.5,3.5c-.293,.293-.293,.768,0,1.061s.768,.293,1.061,0l2.97-2.97,2.97,2.97c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22c.293-.293,.293-.768,0-1.061l-3.5-3.5Z"
-                fill="currentColor"
-              ></path><path
-                d="M11.97,11.22l-2.97,2.97-2.97-2.97c-.293-.293-.768-.293-1.061,0s-.293,.768,0,1.061l3.5,3.5c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22l3.5-3.5c.293-.293,.293-.768,0-1.061s-.768-.293-1.061,0Z"
-                fill="currentColor"
-              ></path></svg
-            >
-          </div>
-
-          <div>
-            You are analyzing a Bootstrap page to recreate it using daisyUI components.<br />Follow
-            below steps strictly. If you miss any step, your code will be rejected.<br /><br />##
-            Step By Step Instructions:<br />1. Carefully examine the each section of the page...
-          </div>
-          <div>
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              More
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"> </path>
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        index.php includes a settings UI with a sidebar on the left and various settings options on
-        the right. Now we need to identify the daisyUI components required to build this UI.
-      </div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using daisyUI Blueprint <span class="text-blue-500">Get Snippet</span>
-        MCP tool to get required daisyUI components that match the UI from the screenshot.
-      </div>
-
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div>Received 7 components from MCP server:</div>
-          <div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              drawer
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              navbar
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              modal
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              dropdown
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              button
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              toggle
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              menu
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div>Perfect! Now we can generate the daisyUI code using these components.</div>
-
-      <div>
-        <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white"
-          ><svg
-            class="size-3 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            ><g
-              stroke-linejoin="round"
-              stroke-linecap="round"
-              stroke-width="2"
-              fill="none"
-              stroke="currentColor"
-              ><path d="M16 18L22 12 16 6"></path><path d="M8 6L2 12 8 18"></path></g
-            ></svg
-          >
-          index.php <span class="text-green-400">+123</span>
-          <span class="text-red-400">-1</span></span
-        >
-      </div>
-
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Done. All the the parts that could be converted to daisyUI components have been updated. Now the
-        page is smaller and uses less class names.
-      </div>
-
-      <!-- AI input -->
-      <div class="rounded-box border border-white/5 bg-white/5 p-2">
-        <div class="flex gap-2 leading-none">
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg class="size-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
-              </g>
-            </svg>
-          </div>
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            index.html
-          </div>
-        </div>
-        <div class="py-2 opacity-50">Ask AI...</div>
-        <div class="flex justify-between">
-          <div class="flex gap-2 leading-none">
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              Agent
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-              </svg>
-            </div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                >
-                </path>
-              </svg>
-              daisyUI Blueprint
-            </span>
-          </div>
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg
-              class="size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 18 18"
-              fill="currentColor"
-            >
-              <path
-                d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
-              ></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Picture color palette to daisyUI theme -->
-
-  <div class="relative mt-20 flex items-start gap-12 max-lg:flex-col lg:flex-row-reverse lg:gap-24">
-    <div class="grow">
-      <div class="prose pt-10">
-        <span class="badge badge-soft mb-4">
-          <svg
-            class="size-4 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M4.91307 2.65823C6.9877 2.38888 9.10296 2.25 11.2503 2.25C13.3974 2.25 15.5124 2.38885 17.5869 2.65815C19.5091 2.90769 20.8783 4.51937 20.9923 6.38495C20.6665 6.27614 20.3212 6.20396 19.96 6.17399C18.5715 6.05874 17.1673 6 15.75 6C14.3326 6 12.9285 6.05874 11.54 6.17398C9.1817 6.36971 7.5 8.36467 7.5 10.6082V14.8937C7.5 16.5844 8.45468 18.1326 9.9328 18.8779L7.28033 21.5303C7.06583 21.7448 6.74324 21.809 6.46299 21.6929C6.18273 21.5768 6 21.3033 6 21V16.9705C5.63649 16.9316 5.27417 16.8887 4.91308 16.8418C2.90466 16.581 1.5 14.8333 1.5 12.8626V6.63738C1.5 4.66672 2.90466 2.91899 4.91307 2.65823Z"
-              fill="currentColor"
-            ></path>
-            <path
-              d="M15.75 7.5C14.3741 7.5 13.0114 7.55702 11.6641 7.66884C10.1248 7.7966 9 9.10282 9 10.6082V14.8937C9 16.4014 10.128 17.7083 11.6692 17.8341C12.9131 17.9357 14.17 17.9912 15.4384 17.999L18.2197 20.7803C18.4342 20.9948 18.7568 21.059 19.037 20.9429C19.3173 20.8268 19.5 20.5533 19.5 20.25V17.8601C19.6103 17.8518 19.7206 17.8432 19.8307 17.8342C21.372 17.7085 22.5 16.4015 22.5 14.8938V10.6082C22.5 9.10283 21.3752 7.79661 19.836 7.66885C18.4886 7.55702 17.1259 7.5 15.75 7.5Z"
-              fill="currentColor"
-            ></path>
-          </svg>
-          {$t("MCP Prompt")}
-        </span>
-        <h2
-          id="feature-7"
-          class="font-title mt-0 mb-8 text-xl leading-none font-semibold lg:text-3xl"
-        >
-          <div class="text-base-content/30 me-2 inline-block tabular-nums lg:me-4 lg:-ml-12">
-            7.
-          </div>
-          {$t("Extract Color Palette from a picture to generate daisyUI Theme")}
-        </h2>
-        <div>
-          <p>
-            {$t(
-              "Are you bad at color palettes? It was never easier to generate a custom daisyUI theme!",
-            )}
-          </p>
-          <p>
-            {$t(
-              "Attach any picture that you like its colors, and the AI will extract the color palette for you.",
-            )}
-          </p>
-          <p>
-            {$t(
-              "Then daisyUI MCP server will generate a custom daisyUI theme based on the extracted colors.",
-            )}
-          </p>
-        </div>
-      </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black p-4 text-xs text-white/70 max-md:mx-auto sm:w-120"
-    >
-      <div class="rounded-box border border-white/5 bg-white/5 p-4">
-        Generate a dark daisyUI theme based on the colors in this picture
-        <div class="mt-2 flex gap-2 leading-none">
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            <img
-              class="-ms-0.5 me-2 rounded-xs border border-white/10"
-              src="data:image/jpeg;base64,/9j/4QDKRXhpZgAATU0AKgAAAAgABgESAAMAAAABAAEAAAEaAAUAAAABAAAAVgEbAAUAAAABAAAAXgEoAAMAAAABAAIAAAITAAMAAAABAAEAAIdpAAQAAAABAAAAZgAAAAAAAABIAAAAAQAAAEgAAAABAAeQAAAHAAAABDAyMjGRAQAHAAAABAECAwCgAAAHAAAABDAxMDCgAQADAAAAAQABAACgAgAEAAAAAQAAABSgAwAEAAAAAQAAAA6kBgADAAAAAQAAAAAAAAAAAAD/2wCEAAEBAQEBAQIBAQIDAgICAwQDAwMDBAUEBAQEBAUGBQUFBQUFBgYGBgYGBgYHBwcHBwcICAgICAkJCQkJCQkJCQkBAQEBAgICBAICBAkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCf/dAAQAAv/AABEIAA4AFAMBIgACEQEDEQH/xAGiAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgsQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+gEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoLEQACAQIEBAMEBwUEBAABAncAAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2gAMAwEAAhEDEQA/AP57v2Rv2TPhN8a/2OvF3xG8R6XqN54l0zxKNPs3tLu5jj+z/wBn2s+z7PAwWR/Mkc7ipbBA6AAfJ+r/AAf8I2aS2v8AYniJ2ilkRZdLhluRwANs4mgmWMo3HybTwd3zCu5/Zy/bI+If7NPgbUfBngjS7e5/tHUHv/tUl1LC0TSW8FuUWNI2UjbADuLDrjHANeEeLfih408VeKdV8UxX13pTavdTXc9vZXk8cPmTyGWQgKy53OxYnFehlMqccQ3i7+z8rX6fd/S2PLrqu/4Z4zfWstnfTWcyeW8MjRsnzfKUO0j5sNwRjkZ9eaq4PpXSywNPK88zF3dizMxJJJ5JJPJJ7mo/sS03OHQ71M//2Q=="
-              alt="img"
-            />
-            my-cat.jpg
-          </div>
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            app.css
-          </div>
-        </div>
-      </div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using <span class="text-blue-500">daisyUI Blueprint</span> MCP prompt
-      </div>
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div class="flex justify-between">
-            <div>Extract dominant colors from picture</div>
-            <svg class="inline-block size-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"
-              ><path
-                d="M9.53,2.22c-.293-.293-.768-.293-1.061,0l-3.5,3.5c-.293,.293-.293,.768,0,1.061s.768,.293,1.061,0l2.97-2.97,2.97,2.97c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22c.293-.293,.293-.768,0-1.061l-3.5-3.5Z"
-                fill="currentColor"
-              ></path><path
-                d="M11.97,11.22l-2.97,2.97-2.97-2.97c-.293-.293-.768-.293-1.061,0s-.293,.768,0,1.061l3.5,3.5c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22l3.5-3.5c.293-.293,.293-.768,0-1.061s-.768-.293-1.061,0Z"
-                fill="currentColor"
-              ></path></svg
-            >
-          </div>
-
-          <div>
-            You are analyzing a picture to create a color palette for a daisyUI theme based on
-            provided syntax.<br />Follow below steps strictly. If you miss any step, your code will
-            be rejected.<br /><br />## Step By Step Instructions:<br />1. Carefully examine the
-            picture provided...
-          </div>
-          <div>
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              More
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"> </path>
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        20 colors were extracted from the picture based on the instructions. Now we need to map the
-        colors to a daisyUI theme.
-      </div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using daisyUI Blueprint <span class="text-blue-500">Get Snippet</span>
-        MCP tool to get required daisyUI examples.
-      </div>
-
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div>Received 2 snippets from MCP server:</div>
-          <div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              colors
-            </span>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              custom-theme
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        Perfect! Now we can generate a custom daisyUI theme with the extracted colors, based on the
-        instructions.
-      </div>
-
-      <div>
-        <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white"
-          ><svg
-            class="size-3 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            ><g
-              stroke-linejoin="round"
-              stroke-linecap="round"
-              stroke-width="2"
-              fill="none"
-              stroke="currentColor"
-              ><path d="M16 18L22 12 16 6"></path><path d="M8 6L2 12 8 18"></path></g
-            ></svg
-          >
-          app.css <span class="text-green-400">+27</span>
-          <span class="text-red-400">-1</span></span
-        >
-      </div>
-
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        app.css file was updated successfully with a new custom daisyUI.
-      </div>
-
-      <!-- AI input -->
-      <div class="rounded-box border border-white/5 bg-white/5 p-2">
-        <div class="flex gap-2 leading-none">
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg class="size-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
-              </g>
-            </svg>
-          </div>
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            index.html
-          </div>
-        </div>
-        <div class="py-2 opacity-50">Ask AI...</div>
-        <div class="flex justify-between">
-          <div class="flex gap-2 leading-none">
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              Agent
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-              </svg>
-            </div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                >
-                </path>
-              </svg>
-              daisyUI Blueprint
-            </span>
-          </div>
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg
-              class="size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 18 18"
-              fill="currentColor"
-            >
-              <path
-                d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
-              ></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- {$t("Layouts and code blocks")} -->
-
-  <div class="relative mt-20 flex items-start gap-12 max-lg:flex-col lg:flex-row-reverse lg:gap-24">
-    <div class="grow">
-      <div class="prose pt-10">
-        <span class="badge badge-soft mb-4">
-          <svg
-            class="size-4 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 1792 1792"
-            fill="currentColor"
-          >
-            <path
-              d="M428 336h825q75 0 75 75v900q0 25-18 43l-64 64q-8 8-13 5.5t-5-12.5V461q0-10-7.5-17.5T1203 436H503q-25 0-43 18l-64 64q-8 8-5.5 13t12.5 5h700q10 0 17.5 7.5t7.5 17.5v950q0 10-7.5 17.5t-17.5 7.5H253q-10 0-17.5-7.5T228 1511V536q0-25 18-43l139-139q18-18 43-18z"
-            ></path>
-          </svg>
-          {$t("MCP Resource")}
-        </span>
-        <h2
-          id="feature-8"
-          class="font-title mt-0 mb-8 text-xl leading-none font-semibold lg:text-3xl"
-        >
-          <div class="text-base-content/30 me-2 inline-block tabular-nums lg:me-4 lg:-ml-12">
-            8.
-          </div>
-          {$t("Layouts and code blocks")}
-        </h2>
-        <div>
-          <p>
-            {$t(
-              "Blueprint MCP server includes layout examples and code blocks for useful design patterns.",
-            )}
-          </p>
-          <p>
-            {$t(
-              "For example if you're making a dashboard, Blueprint MCP will look into the possible layout structures and provide you the one that best fits your UI. And then it fills the layout with the appropriate daisyUI components.",
-            )}
-          </p>
-          <p>
-            {$t(
-              "Additonally, there are code blocks for combination of different UI pieces. For example, a responsive navbar with a button, a menu and a dropdown. It can be challenging to connect them all together, but Blueprint MCP provides ready-to-use code snippets to help you.",
-            )}
-          </p>
-        </div>
-      </div>
-    </div>
-    <div
-      dir="ltr"
-      class="rounded-box flex w-80 shrink-0 flex-col gap-4 border-s border-white/10 bg-black p-4 text-xs text-white/70 max-md:mx-auto sm:w-120"
-    >
-      <div class="rounded-box border border-white/5 bg-white/5 p-4">
-        Create a collapsible daisyUI drawer sidebar. It should be icon only/or expanded on desktop.
-        I should be off-canvas on mobile. Put a menu inside the sidebar with 4 items: Dashboard,
-        Settings, Profile, Logout. Add proper icons. Also add a settings button at the bottom of the
-        sidebar.
-      </div>
-      <div class="opacity-30">Thought for 1s</div>
-      <div>
-        <svg
-          class="text-success inline-block size-3"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          ><g fill="none"
-            ><path
-              d="M10 24L20 34L40 14"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path></g
-          ></svg
-        >
-        Using <span class="text-blue-500">daisyUI Blueprint</span> MCP
-      </div>
-      <div class="-m-2 grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-
-        <div
-          class="m-2 flex flex-col gap-2 border-2 border-blue-500 bg-white/5 p-4 outline-2 outline-offset-2 outline-white/5 [grid-area:1/1/4/4]"
-        >
-          <div class="flex justify-between">
-            <div>
-              <svg
-                class="text-success inline-block size-3"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-              >
-                <g fill="none">
-                  <path
-                    d="M10 24L20 34L40 14"
-                    stroke="currentColor"
-                    stroke-width="4"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ></path>
-                </g>
-              </svg>
-              <span class="opacity-50">Ran</span>
-              <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-                <svg
-                  class="size-3 fill-current opacity-50"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                  ></path>
-                </svg>
-                daisyUI Blueprint
-              </span>
-              <span class="opacity-50">MCP tool</span>
-            </div>
-            <svg class="inline-block size-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
-              <path
-                d="M9.53,2.22c-.293-.293-.768-.293-1.061,0l-3.5,3.5c-.293,.293-.293,.768,0,1.061s.768,.293,1.061,0l2.97-2.97,2.97,2.97c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22c.293-.293,.293-.768,0-1.061l-3.5-3.5Z"
-                fill="currentColor"
-              ></path>
-              <path
-                d="M11.97,11.22l-2.97,2.97-2.97-2.97c-.293-.293-.768-.293-1.061,0s-.293,.768,0,1.061l3.5,3.5c.146,.146,.338,.22,.53,.22s.384-.073,.53-.22l3.5-3.5c.293-.293,.293-.768,0-1.061s-.768-.293-1.061,0Z"
-                fill="currentColor"
-              ></path>
-            </svg>
-          </div>
-          <div>Received required code snippets from MCP:</div>
-          <div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500"
-              >collapsible sidebar</span
-            >
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500"
-              >navbar</span
-            >
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500"
-              >menu</span
-            >
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500"
-              >button</span
-            >
-          </div>
-
-          <div>
-            <svg
-              class="text-success inline-block size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 48 48"
-            >
-              <g fill="none">
-                <path
-                  d="M10 24L20 34L40 14"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </g>
-            </svg>
-            Reading specs, docs and examples.
-          </div>
-          <div>
-            <svg
-              class="text-success inline-block size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 48 48"
-            >
-              <g fill="none">
-                <path
-                  d="M10 24L20 34L40 14"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </g>
-            </svg>
-            Done.
-          </div>
-        </div>
-      </div>
-
-      <div>
-        Perfect. Now let's combine these components into a cohesive layout, according to the
-        instructions provided and the design specs.
-      </div>
-
-      <div>
-        <span class="badge badge-xs gap-1 border-white/10 bg-white/10 text-white"
-          ><svg
-            class="size-3 fill-current opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            ><g
-              stroke-linejoin="round"
-              stroke-linecap="round"
-              stroke-width="2"
-              fill="none"
-              stroke="currentColor"
-              ><path d="M16 18L22 12 16 6"></path><path d="M8 6L2 12 8 18"></path></g
-            ></svg
-          >
-          index.html <span class="text-green-400">+27</span>
-          <span class="text-red-400">-1</span></span
-        >
-      </div>
-
-      <p>collapsible drawer sidebar was added to index.html</p>
-
-      <!-- AI input -->
-      <div class="rounded-box border border-white/5 bg-white/5 p-2">
-        <div class="flex gap-2 leading-none">
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg class="size-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-                <path d="M16 12v1.5a2.5 2.5 0 0 0 5 0v-1.5a9 9 0 1 0 -5.5 8.28"></path>
-              </g>
-            </svg>
-          </div>
-          <div
-            class="rounded-field flex items-center border border-white/5 px-1 py-0.5 text-[0.625rem]"
-          >
-            index.html
-          </div>
-        </div>
-        <div class="py-2 opacity-50">Ask AI...</div>
-        <div class="flex justify-between">
-          <div class="flex gap-2 leading-none">
-            <div
-              class="rounded-field inline-block border border-white/5 px-1 py-0.5 text-[0.625rem]"
-            >
-              Agent
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="inline-block size-3"
-              >
-                <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path>
-              </svg>
-            </div>
-            <span class="badge badge-xs gap-1 border-blue-400/10 bg-blue-400/10 text-blue-500">
-              <svg
-                class="size-3 fill-current opacity-50"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13.78 15.3L19.78 21.3L21.89 19.14L15.89 13.14L13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.91L4.97 21.25L2.86 19.14L10.27 11.74L8.5 9.96L7.78 10.66L6.33 9.25V12.11L5.63 12.81L2.11 9.25L2.81 8.55H5.62L4.22 7.14L7.78 3.58C8.95 2.41 10.83 2.41 12 3.58L9.89 5.74L11.3 7.14L10.59 7.85L12.38 9.63L14.2 7.75C14.06 7.42 14 7 14 6.63C14 4.66 15.56 3.11 17.5 3.11C18.09 3.11 18.61 3.25 19.08 3.53L16.41 6.2L17.91 7.7L20.58 5.03C20.86 5.5 21 6 21 6.63C21 8.55 19.45 10.1 17.5 10.1Z"
-                >
-                </path>
-              </svg>
-              daisyUI Blueprint
-            </span>
-          </div>
-          <div class="rounded-field inline-block border border-white/5 px-1 py-0.5">
-            <svg
-              class="size-3"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 18 18"
-              fill="currentColor"
-            >
-              <path
-                d="M16.345,1.654c-.344-.344-.845-.463-1.305-.315L2.117,5.493c-.491,.158-.831,.574-.887,1.087-.056,.512,.187,.992,.632,1.251l4.576,2.669,3.953-3.954c.293-.293,.768-.293,1.061,0s.293,.768,0,1.061l-3.954,3.954,2.669,4.576c.235,.402,.65,.639,1.107,.639,.048,0,.097-.003,.146-.008,.512-.056,.929-.396,1.086-.886L16.661,2.96h0c.148-.463,.027-.963-.316-1.306Z"
-              ></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- compare table -->
-
-  {#if compareTable}
-    <div id="compare" class="mt-50 mb-16 flex justify-center">
-      <div class="font-title text-base-content/50 text-center text-2xl">
-        <div
-          class="inline-grid grid-cols-[.5rem_1fr_.5rem] grid-rows-[.5rem_1fr_.5rem] align-middle"
-        >
-          <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-          <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-          <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-          <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-          <div class="font-title m-1 bg-blue-600 px-1 font-semibold text-white [grid-area:1/1/4/4]">
-            BLUEPRINT
-          </div>
-        </div>
-        {$t("vs. other tools")}
-        <br />
-        {$t("to generate daisyUI code")}
-      </div>
-    </div>
-
-    <div class="border-base-300 rounded-box mt-10 overflow-x-auto border whitespace-nowrap">
-      <table class="table-xs sm:table-sm lg:table-md table-zebra table">
-        <!-- Table head -->
-        <thead>
-          <tr>
-            {#each compareTable[0] as header, headerIndex}
-              <th class:text-center={headerIndex !== 0}>{@html header ? $t(header) : ""}</th>
-            {/each}
-          </tr>
-        </thead>
-        <!-- Table body -->
-        <tbody>
-          {#each compareTable.slice(1) as row}
-            <tr>
-              {#each row as cell, cellIndex}
-                <td class:text-center={cellIndex !== 0}>
-                  {#if typeof cell === "boolean"}
-                    {#if cell}
-                      <svg
-                        aria-label="Yes"
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="text-success inline-block size-5"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="3"
-                          d="M5 12l5 5L20 7"
-                        />
-                      </svg>
-                    {:else}
-                      <svg
-                        aria-label="No"
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="text-error inline-block size-5"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="3"
-                          d="M18 6L6 18M6 6l12 12"
-                        />
-                      </svg>
-                    {/if}
-                  {:else}
-                    {@html $t(cell)}
-                  {/if}
-                </td>
-              {/each}
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-  {/if}
-
-  <!-- steps -->
-
-  <div id="steps" class="mt-40 flex justify-center">
-    <div class="flex w-full max-w-3xl flex-col items-center gap-2">
-      <div class="font-title mb-8 flex items-center text-lg lg:text-[1.75rem]">
-        {$t("Get Started with daisyUI")}
-        <div
-          class="ms-1 inline-grid grid-cols-[.5rem_1fr_.5rem] grid-rows-[.5rem_1fr_.5rem] align-middle"
-        >
-          <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-          <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-          <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-          <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-          <div class="font-title m-1 bg-blue-600 px-1 font-semibold text-white [grid-area:1/1/4/4]">
-            BLUEPRINT
-          </div>
-        </div>
-      </div>
-      <ul class="steps w-full text-sm">
-        <li class="step">
-          <a
-            class="link link-hover mt-3 flex flex-col items-center gap-2"
-            href={checkoutUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <svg class="size-5 opacity-60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-              ><g
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                stroke-width="2"
-                fill="none"
-                stroke="currentColor"
-                ><path
-                  d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"
-                ></path><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle></g
-              ></svg
-            >
-            {$t("Get a Licence")}
-          </a>
-        </li>
-        <li class="step">
-          <a
-            href="/blueprint/cursor/"
-            class="link link-hover mt-3 flex flex-col items-center gap-2"
-          >
-            <svg
-              viewBox="0 0 48 48"
-              class="size-5 opacity-60"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              ><path
-                d="M5 7H16C20.4183 7 24 10.5817 24 15V42C24 38.6863 21.3137 36 18 36H5V7Z"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="4"
-              ></path><path
-                d="M43 7H32C27.5817 7 24 10.5817 24 15V42C24 38.6863 26.6863 36 30 36H43V7Z"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="4"
-              ></path></svg
-            >
-            {$t("Install MCP server")}
-          </a>
-        </li>
-        <li class="step">
-          <div class="mt-3 flex flex-col items-center gap-2">
-            <svg
-              class="size-5 opacity-60"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 665.8 1000"
-              ><path
-                fill="currentColor"
-                d="M248 850c-22.667 0 -41.333 -9.333 -56 -28c0 0 -180 -236 -180 -236c-10.667 -16 -14.667 -33.333 -12 -52c2.667 -18.667 11.333 -34 26 -46c14.667 -12 31.667 -16.667 51 -14c19.333 2.667 35 12 47 28c0 0 118 154 118 154c0 0 296 -474 296 -474c10.667 -16 25 -26 43 -30c18 -4 35.667 -1.333 53 8c16 10.667 26 25 30 43c4 18 1.333 35.667 -8 53c0 0 -350 560 -350 560c-13.333 21.333 -32 32 -56 32c0 0 -2 2 -2 2"
-              ></path></svg
-            >
-            {$t("Generate daisyUI code")}
-          </div>
-        </li>
-      </ul>
-    </div>
-  </div>
-
-  <!-- FAQ -->
-  <div id="faq" class="mx-auto max-w-[100rem]">
-    <div class="w-full px-4 pt-20 md:px-20!">
-      <div class="mx-auto my-40 grid gap-2 gap-y-16 lg:grid-cols-2" id="faq">
-        <div class="flex flex-col gap-6">
-          <h2 class="font-title lg:text-base-content/10 text-4xl font-semibold lg:text-[10rem]">
-            F.A.Q
-          </h2>
-          <p class="text-base-content/60 text-xs">
-            {@html $t(
-              "If you have any questions before purchase <br />send me an email to help@daisyui.com",
-            )}
-            <br />{$t("I will do my best to help you.")}
-          </p>
-        </div>
-        <div>
-          <div class="collapse-plus collapse">
-            <input type="radio" name="faq" class="min-h-0!" />
-            <div class="collapse-title min-h-0! text-sm font-semibold">
-              {$t("Is this one time payment or a subscription?")}
-            </div>
-            <div
-              class="collapse-content text-base-content/70 border-base-content/10 ms-4 border-s-2 px-6 text-xs"
-            >
-              {$t(
-                "Both are possible. You can purchase a monthly licence, yearly license or a lifetime license.",
-              )}
-            </div>
-          </div>
-          <div class="collapse-plus collapse">
-            <input type="radio" name="faq" class="min-h-0!" />
-            <div class="collapse-title min-h-0! text-sm font-semibold">
-              {$t("What happens after I pay?")}
-            </div>
-            <div
-              class="collapse-content text-base-content/70 border-base-content/10 ms-4 border-s-2 px-6 text-xs"
-            >
-              {$t(
-                "You will receive an email address with a license key which you can use to activate the MCP server. If you don't see the email, check your spam folder.",
-              )}
-            </div>
-          </div>
-          <div class="collapse-plus collapse">
-            <input type="radio" name="faq" class="min-h-0!" />
-            <div class="collapse-title min-h-0! text-sm font-semibold">
-              {$t("Will I receive updates?")}
-            </div>
-            <div
-              class="collapse-content text-base-content/70 border-base-content/10 ms-4 border-s-2 px-6 text-xs"
-            >
-              {$t(
-                "Yes, the package will be updated automatically with latest version of daisyUI. New MCP tools, MCP resources and MCP prompts will be added automatically.",
-              )}
-            </div>
-          </div>
-          <div class="collapse-plus collapse">
-            <input type="radio" name="faq" class="min-h-0!" />
-            <div class="collapse-title min-h-0! text-sm font-semibold">
-              {$t("Do I get customer support?")}
-            </div>
-            <div
-              class="collapse-content text-base-content/70 border-base-content/10 ms-4 border-s-2 px-6 text-xs"
-            >
-              {$t(
-                "We offer support via Discord. You can join the server https://daisyui.com/discord and ask your questions there. We will do our best to help you.",
-              )}
-            </div>
-          </div>
-          <div class="collapse-plus collapse">
-            <input type="radio" name="faq" class="min-h-0!" />
-            <div class="collapse-title min-h-0! text-sm font-semibold">
-              {$t("Can I cancel my subscription?")}
-            </div>
-            <div
-              class="collapse-content text-base-content/70 border-base-content/10 ms-4 border-s-2 px-6 text-xs"
-            >
-              {$t(
-                "Yes you can cancel your subscription at any time at https://www.creem.io/my-orders/login. If you cancel, you will still have access to the product until the end of your billing cycle.",
-              )}
-            </div>
-          </div>
-          <div class="collapse-plus collapse">
-            <input type="radio" name="faq" class="min-h-0!" />
-            <div class="collapse-title min-h-0! text-sm font-semibold">
-              {$t("Can I get a refund?")}
-            </div>
-            <div
-              class="collapse-content text-base-content/70 border-base-content/10 ms-4 border-s-2 px-6 text-xs"
-            >
-              {$t(
-                "If there was an issue, send an email to help@daisyui.com so I can help you. I will do my best to resolve the issue. We don't offer refunds for digital products, however if there was a mistake in payment, for example if you paid twice, send an email to help@daisyui.com.",
-              )}
-            </div>
-          </div>
-          <div class="collapse-plus collapse">
-            <input type="radio" name="faq" class="min-h-0!" />
-            <div class="collapse-title min-h-0! text-sm font-semibold">
-              {$t("I didn't receive the email")}
-            </div>
-            <div
-              class="collapse-content text-base-content/70 border-base-content/10 ms-4 border-s-2 px-6 text-xs"
-            >
-              {$t(
-                "Please check your spam folder. If you still can't find it, send an email to help@daisyui.com so I can help you.",
-              )}
-            </div>
-          </div>
-          <div class="collapse-plus collapse">
-            <input type="radio" name="faq" class="min-h-0!" />
-            <div class="collapse-title min-h-0! text-sm font-semibold">
-              {$t("I bought the wrong package")}
-            </div>
-            <div
-              class="collapse-content text-base-content/70 border-base-content/10 ms-4 border-s-2 px-6 text-xs"
-            >
-              {$t(
-                "Send me an email at help@daisyui.com and I will help you get the right package.",
-              )}
-            </div>
-          </div>
-          <div class="collapse-plus collapse">
-            <input type="radio" name="faq" class="min-h-0!" />
-            <div class="collapse-title min-h-0! text-sm font-semibold">
-              {$t("There was an issue with the payment")}
-            </div>
-            <div
-              class="collapse-content text-base-content/70 border-base-content/10 ms-4 border-s-2 px-6 text-xs"
-            >
-              {$t(
-                "If the payment failed and you didn't receive the product, it usually means the payment didn't go through. Please try again. If the money was deducted from your account, it will be refunded automatically within a week or two. If the issue persists, send an email to help@daisyui.com so I can help you.",
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Big logo -->
-
-  <!-- <div class="h-[40vh]"></div> -->
-  <div class="flex justify-center">
-    <div class="flex flex-col items-center gap-2">
-      <div class="font-title mb-8 flex items-center text-lg lg:text-[1.75rem]">
-        {$t("Official daisyUI Code Generator MCP Server")}
-      </div>
-      <div class="mb-4 inline-grid grid-cols-[1rem_1fr_1rem] grid-rows-[1rem_1fr_1rem]">
-        <div class="border-s-2 border-t-2 border-blue-600 [grid-area:1/1/2/2]"></div>
-        <div class="border-e-2 border-t-2 border-blue-600 [grid-area:1/3/2/4]"></div>
-        <div class="border-s-2 border-b-2 border-blue-600 [grid-area:3/1/4/2]"></div>
-        <div class="border-e-2 border-b-2 border-blue-600 [grid-area:3/3/4/4]"></div>
-        <div class="[grid-area:1/1/4/4]">
-          <div>
-            <h2
-              class="group font-title m-2 text-[clamp(2.5rem,12vw,8rem)] leading-none font-semibold text-white"
-              style="
-                background-image: linear-gradient(#3B72FE 1px, transparent 1px), linear-gradient(90deg, #3B72FE 1px, transparent 1px), linear-gradient(#3B72FE 0.5px, transparent 0.5px), linear-gradient(90deg, #3B72FE 0.5px, #155dfc 0.5px);
-                background-size: 50px 50px, 50px 50px, 10px 10px, 10px 10px;
-                background-position: -2px -2px, -2px -2px, -1px -1px, -1px -1px;"
-            >
-              <div
-                class="flex size-full bg-transparent px-4 transition-colors duration-2000 group-hover:bg-blue-600"
-              >
-                BLUEPRINT
-              </div>
-            </h2>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CTA -->
-  <div class="sticky bottom-6 z-1 flex justify-center">
-    <div
-      class="bg-base-100/30 rounded-box flex justify-end gap-2 border border-white/10 p-2 outline outline-offset-1 outline-black/20 backdrop-blur-sm"
-    >
-      <div class="flex items-center gap-2">
-        <img
-          class="ms-2 size-4 max-sm:hidden"
-          src="https://img.daisyui.com/images/logos/cursor.webp?2"
-          alt="Cursor"
-        />
-        <img
-          class="size-4 max-sm:hidden"
-          src="https://img.daisyui.com/images/logos/chatgpt.webp"
-          alt="VS Code"
-        />
-        <img
-          class="size-4 max-sm:hidden"
-          src="https://img.daisyui.com/images/logos/claude.webp"
-          alt="Claude"
-        />
-        <div class="ps-2 text-[0.625rem]">{$t("daisyUI Blueprint MCP server")}</div>
-      </div>
-      <a class="btn btn-sm" href="/blueprint/cursor/"> {$t("Install guide")} </a>
-      <a class="btn btn-neutral btn-sm" href={checkoutUrl} target="_blank" rel="noopener noreferrer"
-        >{$t("Get the license")}</a
-      >
-    </div>
-  </div>
-
-  <div class="h-[40vh]"></div>
+    </section>
+  </main>
 </div>
 
 <StoreFooter />
-
-<style>
-  @keyframes fade-in {
-    20% {
-      color: #fff;
-    }
-    100% {
-      color: #fff;
-      margin-inline-end: 0rem;
-    }
-  }
-  .blueprint_logo_animated {
-    overflow: hidden;
-    span {
-      color: #1447e6;
-      margin-inline-end: -0.25rem;
-      animation-name: fade-in;
-      animation-duration: 1.5s;
-      animation-fill-mode: forwards;
-    }
-  }
-</style>

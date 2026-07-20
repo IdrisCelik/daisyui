@@ -21,8 +21,20 @@ const defaultTranslation = {
   ...defaultHomeModule["../translation/en.home.json"].default,
 }
 
-// For other languages and English chunks, use lazy loading.
-const translationModules = import.meta.glob(["../translation/*.json", "!../translation/en.json"])
+// Keep the eager English fallbacks out of the lazy glob so the bundler does not
+// include the same modules in both import modes. Register their eager module
+// objects behind the same async interface to preserve the module lookup contract.
+const lazyTranslationModules = import.meta.glob([
+  "../translation/*.json",
+  "!../translation/en.json",
+  "!../translation/en.common.json",
+  "!../translation/en.home.json",
+])
+const translationModules = {
+  ...lazyTranslationModules,
+  "../translation/en.common.json": async () => defaultCommonModule["../translation/en.common.json"],
+  "../translation/en.home.json": async () => defaultHomeModule["../translation/en.home.json"],
+}
 const localesSet = new Set()
 Object.entries(translationModules).map(([path]) => {
   const localeFileName = subString(path, "/translation/", ".json")
@@ -80,6 +92,8 @@ const loadedChunks = {
   [defaultLang]: new Set(["common", "home"]),
 }
 const loadingAllChunks = {}
+const loadingChunks = new Map()
+const loadingTranslations = new Map()
 
 // Function to check if a language is valid
 const isValidLanguage = (lang) => langs.includes(lang)
@@ -110,7 +124,8 @@ const updateLanguageStore = (lang) => {
 // Function to get translation module path
 const getTranslationModulePath = (lang) => `${path}/${lang}.json`
 const getTranslationChunkModulePath = (lang, chunk) => `${path}/${lang}.${chunk}.json`
-const hasChunkedTranslation = (lang) => translationModules[getTranslationChunkModulePath(lang, "common")]
+const hasChunkedTranslation = (lang) =>
+  translationModules[getTranslationChunkModulePath(lang, "common")]
 
 // Function to update loaded translations store
 const updateLoadedTranslations = (lang, translationData) => {
@@ -136,17 +151,26 @@ async function loadTranslationChunk(lang, chunk) {
 
   loadedChunks[lang] ??= new Set()
   if (loadedChunks[lang].has(chunk)) return get(loadedTranslations)[lang]
+  const loadingKey = `${lang}.${chunk}`
+  if (loadingChunks.has(loadingKey)) return loadingChunks.get(loadingKey)
 
-  try {
-    const modulePath = getTranslationChunkModulePath(lang, chunk)
-    const module = await translationModules[modulePath]()
-    mergeLoadedTranslations(lang, module.default)
-    loadedChunks[lang].add(chunk)
-    return module.default
-  } catch (error) {
-    console.error(`Failed to load ${lang}.${chunk} translations:`, error)
-    return null
-  }
+  const request = (async () => {
+    try {
+      const modulePath = getTranslationChunkModulePath(lang, chunk)
+      const module = await translationModules[modulePath]()
+      mergeLoadedTranslations(lang, module.default)
+      loadedChunks[lang].add(chunk)
+      return module.default
+    } catch (error) {
+      console.error(`Failed to load ${lang}.${chunk} translations:`, error)
+      return null
+    } finally {
+      loadingChunks.delete(loadingKey)
+    }
+  })()
+
+  loadingChunks.set(loadingKey, request)
+  return request
 }
 
 async function loadTranslationChunks(lang, chunks) {
@@ -184,20 +208,28 @@ async function loadTranslation(lang) {
   if (hasChunkedTranslation(lang)) {
     return loadTranslationChunks(lang, ["common", currentRouteChunk])
   }
+  if (loadingTranslations.has(lang)) return loadingTranslations.get(lang)
 
-  try {
-    // Dynamically import the translation file
-    const modulePath = getTranslationModulePath(lang)
-    const module = await translationModules[modulePath]()
+  const request = (async () => {
+    try {
+      // Dynamically import the translation file
+      const modulePath = getTranslationModulePath(lang)
+      const module = await translationModules[modulePath]()
 
-    // Update the loaded translations store
-    updateLoadedTranslations(lang, module.default)
+      // Update the loaded translations store
+      updateLoadedTranslations(lang, module.default)
 
-    return module.default
-  } catch (error) {
-    console.error(`Failed to load translations for ${lang}:`, error)
-    return null
-  }
+      return module.default
+    } catch (error) {
+      console.error(`Failed to load translations for ${lang}:`, error)
+      return null
+    } finally {
+      loadingTranslations.delete(lang)
+    }
+  })()
+
+  loadingTranslations.set(lang, request)
+  return request
 }
 
 // Function to replace variables in a translation string
@@ -311,22 +343,9 @@ const handleStorageEvent = (event) => {
   }
 }
 
-// Function to handle navigation end event
-const handleNavigationEnd = () => {
-  loadRouteTranslations(window.location.pathname)
-
-  const savedLang = localStorage.getItem("lang")
-  if (savedLang && langs.includes(savedLang)) {
-    if (get(currentLang) !== savedLang) {
-      setLang(savedLang, false)
-    }
-  }
-}
-
 // Initialize from localStorage if available
 if (typeof window !== "undefined") {
   window.addEventListener("storage", handleStorageEvent)
-  document.addEventListener("sveltekit:navigation-end", handleNavigationEnd)
 }
 
 // Function to set the language

@@ -22,7 +22,7 @@
     }
     return items
   }
-  let arrayOfPagesInOrder = extractPages(pages)
+  const arrayOfPagesInOrder = $derived.by(() => extractPages(pages))
 
   let currentPageIndex = $derived(
     arrayOfPagesInOrder.findIndex((item) => item.href === $page.url.pathname),

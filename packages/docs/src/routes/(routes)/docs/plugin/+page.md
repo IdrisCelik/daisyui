@@ -1,6 +1,6 @@
 ---
 title: Add daisyUI agent plugin
-desc: Install the daisyUI plugin for Codex, Cursor, or Claude Code so your agent can use the latest daisyUI skill.
+desc: Install the daisyUI plugin for Codex, Grok Build, Cursor, or Claude Code so your agent can use the latest daisyUI skill.
 ---
 
 <script>
@@ -9,9 +9,9 @@ desc: Install the daisyUI plugin for Codex, Cursor, or Claude Code so your agent
     { name: "Codex", slug: "codex", icon: "codex.svg" },
     { name: "Cursor", slug: "cursor", icon: "cursor.svg" },
     { name: "Claude Code", slug: "claude-code", icon: "claude-code.svg" },
+    { name: "Grok Build", slug: "grok", icon: "grok.svg" },
   ]
 </script>
-
 
 The daisyUI plugin gives your coding agent the latest daisyUI skill. Once installed, the agent can pull in daisyUI-specific instructions when you ask it to build UI with daisyUI.
 

@@ -7,8 +7,14 @@
   import CompanyLogos from "$components/CompanyLogos.svelte"
   import Footer from "$components/Footer.svelte"
   import SEO from "$components/SEO.svelte"
+  import { getLegacyMarketingImage } from "$lib/data/marketingPages.js"
   import { t } from "$lib/i18n.svelte.js"
-  let { title, desc, children, data } = $props()
+  let { title, desc, children, data, img = "" } = $props()
+  let seoImage = $derived(
+    img ||
+      getLegacyMarketingImage($page.url.pathname) ||
+      "https://img.daisyui.com/images/default.webp",
+  )
   async function fetchStats() {
     if (!browser) return
     const response = await fetch(`${PUBLIC_DAISYUI_API_PATH}/stats.json`)
@@ -33,12 +39,7 @@
   })
 </script>
 
-<SEO
-  {title}
-  formatTitle={false}
-  {desc}
-  img={`https://img.daisyui.com/images${$page.url.pathname.replace(/\/$/, "")}.webp`}
-/>
+<SEO {title} formatTitle={false} {desc} img={seoImage} />
 <div class="mx-auto max-w-4xl px-4 py-20">
   <div
     class="prose prose-sm lg:prose-h1:text-5xl lg:prose-h2:text-4xl lg:prose-h3:text-3xl md:prose-base w-full max-w-4xl grow pt-10 md:text-sm"
@@ -85,7 +86,7 @@
           <input type="checkbox" id="links-modal" class="modal-toggle" />
           <div class="modal modal-bottom md:modal-end">
             <div class="modal-box max-w-5xl md:w-96 md:p-12">
-              <h3 class="mb-6 text-lg font-semibold">Pages</h3>
+              <h3 class="mb-6 text-lg font-semibold">{data.pageGroupLabel}</h3>
               <nav class="gap-24 text-xs leading-loose">
                 {#each data.pages as page}
                   <div>

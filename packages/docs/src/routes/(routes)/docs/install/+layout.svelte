@@ -1,28 +1,27 @@
 <script>
   let { data, children } = $props()
-  import { page } from "$app/stores"
 </script>
 
-{#if data.frameworks.find((item) => item.path === $page.url.pathname)}
+{#if data.framework}
   <div
     class="rounded-box from-base-content/5 mt-4 flex max-w-[56rem] gap-4 bg-gradient-to-br p-6 sm:mb-4 sm:gap-10 sm:p-10 lg:ms-8 lg:max-w-[54rem]"
   >
     <div class="mt-2 size-10 shrink-0 *:size-full sm:size-20">
-      {@html data.frameworks.find((item) => item.path === $page.url.pathname).logo}
+      {@html data.framework.logo}
     </div>
     <div>
       <div class="ms-2 mb-0.5 text-sm font-bold tracking-wide sm:mb-2 sm:text-lg">
-        {data.frameworks.find((item) => item.path === $page.url.pathname).name}
+        {data.framework.name}
       </div>
       <div class="text-base-content/70 ms-2 mb-0.5 text-[0.625rem] sm:mb-2 sm:text-sm">
-        {data.frameworks.find((item) => item.path === $page.url.pathname).desc}
+        {data.framework.desc}
       </div>
       <div>
         <a
           rel="nofollow, noreferrer"
           target="_blank"
           class="btn btn-ghost btn-xs"
-          href={data.frameworks.find((item) => item.path === $page.url.pathname).site}
+          href={data.framework.site}
         >
           <svg width="14" height="14" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none">
@@ -37,7 +36,7 @@
           rel="nofollow, noreferrer"
           target="_blank"
           class="btn btn-ghost btn-xs"
-          href={data.frameworks.find((item) => item.path === $page.url.pathname).github}
+          href={data.framework.github}
         >
           <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <g

@@ -1,7 +1,7 @@
 <script>
   import SEO from "$components/SEO.svelte"
   let { data } = $props()
-  let { posts } = data
+  const posts = $derived(data.posts)
 </script>
 
 <SEO

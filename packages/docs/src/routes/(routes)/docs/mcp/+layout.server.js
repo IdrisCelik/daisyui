@@ -4,6 +4,7 @@ export function load() {
       { name: "VSCode Copilot", slug: "vscode", icon: "copilot.svg" },
       { name: "Claude Code", slug: "claudecode", icon: "claude-code.svg" },
       { name: "Codex", slug: "codex", icon: "codex.svg" },
+      { name: "Grok Build", slug: "grok", icon: "grok.svg" },
       { name: "Cursor", slug: "cursor", icon: "cursor.svg" },
       { name: "OpenCode", slug: "opencode", icon: "opencode.svg" },
       { name: "Antigravity", slug: "antigravity", icon: "antigravity.svg" },

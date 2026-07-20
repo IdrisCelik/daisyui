@@ -90,6 +90,10 @@ sidebar:
         - name: "Blueprint Introduction"
           href: "/blueprint/"
           exact: true
+        - name: "How Blueprint MCP Works"
+          href: "/blueprint/workflow/"
+        - name: "changelog"
+          href: "/blueprint/changelog/"
         - {}
         - name: "Coding Agents"
         - name: "Cursor"
@@ -101,6 +105,9 @@ sidebar:
         - name: "Codex"
           href: "/blueprint/codex/"
           iconUrl: "https://img.daisyui.com/images/logos/codex.svg"
+        - name: "Grok Build"
+          href: "/blueprint/grok/"
+          iconUrl: "https://img.daisyui.com/images/logos/grok.svg"
         - name: "VSCode Copilot"
           href: "/blueprint/vscode/"
           iconUrl: "https://img.daisyui.com/images/logos/copilot.svg"

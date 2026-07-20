@@ -1,15 +1,5 @@
 <script>
-  import Countdown from "svelte-countdown"
   import { page } from "$app/stores"
-
-  const dateFormat = {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }
 </script>
 
 <!-- Without timer -->
@@ -96,56 +86,6 @@
         Introducing <span class="font-bold">daisyUI Dashboard Skill</span>. Generate premium-quality
         dashboards with LLM
       </div>
-    </a>
-  </div>
-{/if}
-
-<!-- With timer -->
-{#if false && new Date() < new Date("2026-05-28T00:00:00.000000Z")}
-  <div class="bg-base-100 flex justify-center rounded-sm">
-    <a
-      data-sveltekit-preload-code="viewport"
-      href="/store/nexus/"
-      class="alert border-base-300 hover:bg-base-200 bg-base-100 flex w-full justify-center rounded-none border-x-0 border-t-0 p-2 text-center text-[0.6875rem] shadow-none transition-colors"
-    >
-      <p class="leading-relaxed [text-wrap:balance]">
-        <span class="text-base-content/70">
-          <span class="font-bold">Nexus Dashboard</span> v4.0 is now available! – Use code
-          <code
-            class="decoration-success font-mono tracking-wide underline decoration-wavy underline-offset-4"
-          >
-            SPRING40
-          </code>
-          to get 40% discount on <span class="font-bold">Nexus</span> or
-          <span class="font-bold">Scalo</span>
-          <span class="inline-block w-2"></span>
-          <Countdown
-            from={new Date("2026-05-28T00:00:00.000000Z").toLocaleString("en-GB", dateFormat)}
-            dateFormat="DD/MM/YYYY, HH:mm:ss"
-          >
-            {#snippet children({ remaining })}
-              {#if remaining.done === false}
-                <span class="border-base-content/20 rounded-full border border-dashed px-2 py-1">
-                  <date
-                    datetime={new Date("2026-04-13T00:00:00.000000Z").toLocaleString(
-                      "en-GB",
-                      dateFormat,
-                    )}
-                    class="countdown font-mono text-xs"
-                  >
-                    {remaining.days * 24 + remaining.hours}h&nbsp;
-                    <span style={`--value:${remaining.minutes}`}></span>
-                    m&nbsp;
-                    <span style={`--value:${remaining.seconds}`}></span>
-                    s
-                  </date>
-                  <!-- remaining -->
-                </span>
-              {/if}
-            {/snippet}
-          </Countdown>
-        </span>
-      </p>
     </a>
   </div>
 {/if}

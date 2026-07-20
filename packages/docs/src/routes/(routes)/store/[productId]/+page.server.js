@@ -1,43 +1,10 @@
-import { PUBLIC_DAISYUI_API_PATH } from "$env/static/public"
 import { compile } from "mdsvex"
-import { load as loadYaml } from "js-yaml"
 import { error } from "@sveltejs/kit"
+import { getStoreProductData } from "$lib/server/content/store.js"
 
-const fetchStoreData = async () => {
-  try {
-    const response = await fetch(`${PUBLIC_DAISYUI_API_PATH}/data/store.yaml`)
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch store data: ${response.status}`)
-    }
-
-    const yamlText = await response.text()
-    return loadYaml(yamlText)
-  } catch (e) {
-    console.error(`Error loading or parsing YAML`, e)
-    throw error(500, "Server configuration error: Could not load data")
-  }
-}
-
-const fetchProduct = async (id) => {
-  try {
-    const response = await fetch(`${PUBLIC_DAISYUI_API_PATH}/data/store/${id}.yaml`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch product ${id}: ${response.status}`)
-    }
-    const yamlText = await response.text()
-    return loadYaml(yamlText)
-  } catch (e) {
-    console.error(`Error loading product ${id}`, e)
-    return null
-  }
-}
-
-export async function load({ params, parent }) {
-  const yamlData = await fetchStoreData()
-  const data = await parent()
-  const product = await fetchProduct(params.productId)
-  if (!product) {
+export async function load({ params }) {
+  const data = await getStoreProductData(params.productId)
+  if (!data) {
     throw error(404, "Product not found")
   }
 
@@ -49,14 +16,13 @@ export async function load({ params, parent }) {
   }
 
   return {
-    products: data.products,
     product: {
-      ...product,
-      _key: params.productId,
-      desc: product.desc && (await md(product.desc)),
-      banner: product.banner && (await md(product.banner)),
+      ...data.product,
+      desc: data.product.desc && (await md(data.product.desc)),
+      banner: data.product.banner && (await md(data.product.banner)),
     },
+    relatedProducts: data.relatedProducts,
     tech: data.tech,
-    faq: yamlData.faq,
+    faq: data.faq,
   }
 }

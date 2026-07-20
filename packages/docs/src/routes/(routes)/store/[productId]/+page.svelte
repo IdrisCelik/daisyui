@@ -43,33 +43,6 @@
     return `${url}${params ? `?${params}` : ""}`
   }
 
-  function hasAllSameTag(product1, product2) {
-    return (
-      product1.tags &&
-      product2.tags &&
-      product1.tags.length === product2.tags.length &&
-      product1.tags.every((tags) => product2.tags.includes(tags))
-    )
-  }
-  function getSimilarProducts(product, allProducts) {
-    // Filter for products with all the same tags
-    const allSameTagProducts = allProducts.filter(
-      (p) => p._key !== product._key && hasAllSameTag(product, p),
-    )
-
-    // Filter for products with at least one overlapping tags
-    const someSameTagProducts = allProducts.filter(
-      (p) => p._key !== product._key && p.tags && p.tags.some((t) => product.tags.includes(t)),
-    )
-
-    // Combine, remove duplicates, and limit to 3
-    const similarProducts = [...allSameTagProducts, ...someSameTagProducts]
-      .filter((product, index, self) => index === self.findIndex((p) => p._key === product._key))
-      .slice(0, 2)
-
-    return similarProducts
-  }
-
   function getLinksIcon(link) {
     switch (link) {
       case "license":
@@ -896,11 +869,11 @@
   </div>
 </div>
 
-{#if data.product.tags && data.products.length > 0 && getSimilarProducts(data.product, data.products).length > 0}
+{#if data.product.tags && data.relatedProducts.length > 0}
   <div class="divider text-base-content/30 my-20">You will also like these</div>
 
   <div class="mx-auto grid gap-x-10 gap-y-36 md:grid-cols-2 xl:gap-x-16">
-    {#each getSimilarProducts(data.product, data.products) as product}
+    {#each data.relatedProducts as product}
       <StoreProduct {product} productKey={product._key} {convertCurrency} />
     {/each}
   </div>

@@ -13,7 +13,7 @@ componentfooter: false
 
 <SEO
   title={`How to add daisyUI skill to ${data.editor.name}`}
-  desc="Setup your code editor and agent to correctly generate daisyUI code based on your prompt."
+  desc={`Add the daisyUI skill to ${data.editor.name} and generate accurate daisyUI components from your prompts.`}
 />
 
 

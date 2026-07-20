@@ -1,82 +1,11 @@
-import { PUBLIC_DAISYUI_API_PATH } from "$env/static/public"
 import { error } from "@sveltejs/kit"
 import * as sitemap from "super-sitemap"
-import { load as loadYaml } from "js-yaml"
-import { load as loadSkillEditors } from "../(routes)/docs/skill/+layout.server.js"
+import { codingTools } from "$lib/data/codingTools.js"
+import { getComparisonSitemapData } from "$lib/server/content/comparisons.js"
+import { getSkillProductIds } from "$lib/server/content/skills.js"
+import { getStoreProductIds } from "$lib/server/content/store.js"
 
 export const prerender = true
-
-const fetchProductIds = async () => {
-  try {
-    const response = await fetch(`${PUBLIC_DAISYUI_API_PATH}/data/store.yaml`)
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch store data: ${response.status}`)
-    }
-
-    const yamlText = await response.text()
-    const yamlData = loadYaml(yamlText)
-
-    return yamlData?.productOrder?.map((id) => String(id)) ?? []
-  } catch (err) {
-    console.error("Error fetching or processing store data:", err)
-    return []
-  }
-}
-
-const fetchSkillIds = async () => {
-  try {
-    const response = await fetch(`${PUBLIC_DAISYUI_API_PATH}/data/skills.yaml`)
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch skills data: ${response.status}`)
-    }
-
-    const yamlText = await response.text()
-    const yamlData = loadYaml(yamlText)
-
-    return yamlData?.skillOrder?.map((id) => String(id)) ?? []
-  } catch (err) {
-    console.error("Error fetching or processing skills data:", err)
-    return []
-  }
-}
-
-const fetchCompareData = async () => {
-  try {
-    const response = await fetch(`${PUBLIC_DAISYUI_API_PATH}/data/compare.yaml`)
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch compare data: ${response.status}`)
-    }
-
-    const yamlFile = await response.text()
-    const yamlData = loadYaml(yamlFile)
-    return yamlData?.data ?? {}
-  } catch (err) {
-    console.error("Error fetching or parsing compare data:", err)
-    return {}
-  }
-}
-
-const generateCompareSlugs = (frameworks = []) => {
-  // Generate all pair permutations, then canonicalize each pair by sorting
-  // the two framework ids so that "a-vs-b" and "b-vs-a" collapse to the same
-  // slug. Finally deduplicate the list while preserving order.
-  const slugs = frameworks.flatMap((f1) =>
-    frameworks
-      .filter((f2) => f1 !== f2)
-      .map((f2) => {
-        const [smaller, larger] = [f1, f2].sort()
-        return `${smaller}-vs-${larger}`
-      }),
-  )
-
-  // Deduplicate while preserving insertion order
-  return Array.from(new Set(slugs))
-}
-
-const generateAlternativeSlugs = (frameworks = []) => frameworks.filter((key) => key !== "daisyui")
 
 const processPath = (entry) => {
   const updatedEntry = { ...entry, path: entry.path === "/" ? entry.path : `${entry.path}/` }
@@ -98,15 +27,13 @@ export const GET = async () => {
   let skillPages = []
 
   try {
-    const compareData = await fetchCompareData()
-    const frameworks = Object.keys(compareData)
+    const comparisonData = await getComparisonSitemapData()
 
-    comparePages = generateCompareSlugs(frameworks)
-    alternativeLibraries = generateAlternativeSlugs(frameworks)
-    productIds = await fetchProductIds()
-    skillIds = await fetchSkillIds()
-    const { skillEditors } = await loadSkillEditors()
-    skillPages = skillEditors.map((editor) => editor.slug)
+    comparePages = comparisonData.comparePages
+    alternativeLibraries = comparisonData.alternativeLibraries
+    productIds = await getStoreProductIds()
+    skillIds = await getSkillProductIds()
+    skillPages = codingTools.map((editor) => editor.slug)
   } catch (err) {
     throw error(500, `Could not load data for sitemap: ${err.message}`)
   }
@@ -123,6 +50,7 @@ export const GET = async () => {
       ".*\\/checkout$",
       "/blog/tag/",
       "/resources/videos/",
+      "^/pages",
     ],
     paramValues: {
       "/store/[productId]": productIds,
