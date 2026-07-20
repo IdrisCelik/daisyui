@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.7.0](https://github.com/saadeghi/daisyui/compare/v5.6.22...v5.7.0) (2026-07-20)
+
+### Features
+
+* New modifier `menu-paged` for navigating inside and outside of nested menus ([63566ce](https://github.com/saadeghi/daisyui/commit/63566ced674b431cdbc4aba1455beb93d2159462))
 ## [5.6.22](https://github.com/saadeghi/daisyui/compare/v5.6.21...v5.6.22) (2026-07-20)
 
 ### Bug Fixes
