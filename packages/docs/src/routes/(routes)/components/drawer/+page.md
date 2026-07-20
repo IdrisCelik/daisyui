@@ -84,7 +84,7 @@ You can check/uncheck the checkbox using JavaScript or by clicking the `label` t
   <input id="my-drawer-1" type="checkbox" class="$$drawer-toggle" />
   <div class="$$drawer-content">
     <!-- Page content here -->
-    <label for="my-drawer-1" class="$$btn $$$$drawer-button">Open drawer</label>
+    <label for="my-drawer-1" class="$$btn $$drawer-button">Open drawer</label>
   </div>
   <div class="$$drawer-side">
     <label for="my-drawer-1" aria-label="close sidebar" class="$$drawer-overlay"></label>
@@ -102,7 +102,7 @@ You can check/uncheck the checkbox using JavaScript or by clicking the `label` t
 #### Change screen size to show/hide menu
 
 <div class="drawer h-56 rounded overflow-hidden">
-  <input id="my-drawer-2" type="checkbox" autocomplete="off" class="drawer-toggle" />
+  <input id="my-drawer-2" type="checkbox" autocomplete="off" class="drawer-toggle lg:hidden" />
   <div class="flex flex-col drawer-content">
     <div class="w-full navbar bg-base-300">
       <div class="flex-none lg:hidden">
@@ -131,7 +131,7 @@ You can check/uncheck the checkbox using JavaScript or by clicking the `label` t
 
 ```html
 <div class="$$drawer">
-  <input id="my-drawer-2" type="checkbox" class="$$drawer-toggle" />
+  <input id="my-drawer-2" type="checkbox" class="$$drawer-toggle lg:hidden" />
   <div class="$$drawer-content flex flex-col">
     <!-- Navbar -->
     <div class="$$navbar bg-base-300 w-full">
@@ -198,7 +198,7 @@ You can check/uncheck the checkbox using JavaScript or by clicking the `label` t
   <input id="my-drawer-3" type="checkbox" class="$$drawer-toggle" />
   <div class="$$drawer-content flex flex-col items-center justify-center">
     <!-- Page content here -->
-    <label for="my-drawer-3" class="$$btn $$$$drawer-button lg:hidden">
+    <label for="my-drawer-3" class="$$btn $$drawer-button lg:hidden">
       Open drawer
     </label>
   </div>
@@ -219,11 +219,11 @@ You can check/uncheck the checkbox using JavaScript or by clicking the `label` t
 #### In this example instead of completely hiding the drawer sidebar, we only show the icons when the drawer is closed. To add styles based on the state of the drawer, we use the `is-drawer-open` and `is-drawer-close` variants. For example `is-drawer-close:hidden` or `is-drawer-open:w-80`. Also we have tooltips when the drawer is closed and a switch button to open/close the drawer and rotates the button icon based on the state of the drawer.
 
 <div class="drawer lg:drawer-open h-80">
-  <input id="my-drawer-4" type="checkbox" autocomplete="off" class="drawer-toggle" />
+  <input id="my-drawer-4" type="checkbox" autocomplete="off" class="drawer-toggle inline" />
   <div class="drawer-content">
     <!-- Navbar -->
     <nav class="navbar w-full bg-base-300">
-      <label for="my-drawer-4" aria-label="open sidebar" class="btn btn-square btn-ghost">
+      <label for="my-drawer-4" aria-label="open sidebar" class="btn btn-square btn-ghost drawer-button">
         <!-- Sidebar toggle icon -->
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor" class="my-1.5 inline-block size-4"><path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"></path><path d="M9 4v16"></path><path d="M14 10l2 2l-2 2"></path></svg>
       </label>
@@ -260,11 +260,11 @@ You can check/uncheck the checkbox using JavaScript or by clicking the `label` t
 
 ```html
 <div class="$$drawer lg:$$drawer-open">
-  <input id="my-drawer-4" type="checkbox" class="$$drawer-toggle" />
+  <input id="my-drawer-4" type="checkbox" class="$$drawer-toggle inline" />
   <div class="$$drawer-content">
     <!-- Navbar -->
     <nav class="$$navbar w-full bg-base-300">
-      <label for="my-drawer-4" aria-label="open sidebar" class="$$btn $$btn-square $$btn-ghost">
+      <label for="my-drawer-4" aria-label="open sidebar" class="$$btn $$btn-square $$btn-ghost $$drawer-button">
         <!-- Sidebar toggle icon -->
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor" class="my-1.5 inline-block size-4"><path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"></path><path d="M9 4v16"></path><path d="M14 10l2 2l-2 2"></path></svg>
       </label>
