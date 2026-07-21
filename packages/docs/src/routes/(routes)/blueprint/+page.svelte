@@ -13,9 +13,59 @@
   const checkoutUrl = "/blueprint/checkout/"
 
   const blueprintProductIds = [
+    "prod_5E7U1fS3URoEtdjqJr3R9d",
     "prod_7bSjj3UImBhfsYHclXQHt4",
     "prod_4GWzcIFPubIXjTBvzo9pKA",
     "prod_4EC2CMwyCoPAeJ6GhKabZd",
+  ]
+
+  const pricingPlans = [
+    {
+      slug: "monthly",
+      name: "1 Month",
+      price: "$22",
+      cadence: "/ month",
+      summary: "Billed every month",
+      billing: "cancel anytime",
+      features: [
+        "All features",
+        "3 day free trial",
+        "For up to 2 clients",
+        "Updates and new features included",
+      ],
+      cta: "Start trial",
+      href: "https://www.creem.io/payment/prod_5E7U1fS3URoEtdjqJr3R9d",
+      popular: false,
+    },
+    {
+      slug: "quarterly",
+      name: "3 Month",
+      price: "$45",
+      cadence: "/ quarter",
+      summary: "Billed every 3 months",
+      billing: "cancel anytime",
+      features: [
+        "All features",
+        "3 day free trial",
+        "For up to 5 clients",
+        "Updates and new features included",
+      ],
+      cta: "Start trial",
+      href: "https://www.creem.io/payment/prod_4EC2CMwyCoPAeJ6GhKabZd",
+      popular: true,
+    },
+    {
+      slug: "lifetime",
+      name: "Lifetime",
+      price: "$600",
+      cadence: "",
+      summary: "One-time purchase",
+      billing: "Use forever, without limits",
+      features: ["All features", "For up to 20 clients", "Updates and new features included"],
+      cta: "Get lifetime access",
+      href: "https://www.creem.io/payment/prod_7bSjj3UImBhfsYHclXQHt4",
+      popular: false,
+    },
   ]
 
   const expertRoles = [
@@ -1064,6 +1114,61 @@
   </svg>
 {/snippet}
 
+{#snippet pricingCardContent(plan)}
+  {#if plan.popular}
+    <div class="absolute -top-3 start-6 z-2">
+      <span class="badge bg-neutral px-3 font-semibold text-neutral-content shadow-sm">
+        Most popular
+      </span>
+    </div>
+  {/if}
+
+  <div class="card-body gap-0 p-6 sm:p-7">
+    <h3 id={`pricing-${plan.slug}`} class="card-title text-xl">
+      {plan.name} license
+    </h3>
+
+    <div class="mt-8 flex items-end gap-2">
+      <span class="font-title text-4xl leading-none font-semibold tracking-tight tabular-nums">
+        {plan.price}
+      </span>
+      {#if plan.cadence}
+        <span class="pb-1 text-sm text-base-content/50">{plan.cadence}</span>
+      {/if}
+    </div>
+
+    <div class="mt-5 min-h-14 border-y border-base-300 py-3 text-sm">
+      <p class="font-semibold text-base-content">{plan.summary}</p>
+      <p class="mt-0.5 text-base-content/50">{plan.billing}</p>
+    </div>
+
+    <ul class="mt-6 flex grow flex-col gap-3 text-sm leading-relaxed">
+      {#each plan.features as feature}
+        <li class="flex items-start gap-2.5">
+          <span class="mt-0.5 shrink-0">{@render checkIcon("Included")}</span>
+          <span>{feature}</span>
+        </li>
+      {/each}
+    </ul>
+
+    <div class="card-actions mt-8">
+      <a
+        class="btn group w-full bg-neutral text-neutral-content"
+        href={plan.href}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {plan.cta}
+        <span
+          class="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none rtl:rotate-180"
+        >
+          {@render arrowIcon()}
+        </span>
+      </a>
+    </div>
+  </div>
+{/snippet}
+
 {#snippet floatingToolCard(role, text, motion)}
   <div
     class="card card-sm card-border w-52 origin-center bg-base-100 text-base-content shadow-xl will-change-transform"
@@ -1291,8 +1396,8 @@
             class:translate-y-3={enhanced && !pageReady}
             class:opacity-0={enhanced && !pageReady}
           >
-            <span class="status status-success status-sm" aria-hidden="true"></span>
-            {$t("This page was made with Blueprint MCP and GPT 5.6")}
+            <span class="status status-success" aria-hidden="true"></span>
+            {$t("This page was made with Blueprint MCP")}
           </div>
 
           <h1
@@ -1477,7 +1582,7 @@
             class:translate-y-4={enhanced && !pageReady}
             class:opacity-0={enhanced && !pageReady}
           >
-            <div class="aura aura-rainbow">
+            <div>
               <a
                 class="btn btn-lg btn-neutral"
                 href={checkoutUrl}
@@ -1534,7 +1639,7 @@
               </div>
               <div class="flex gap-3 text-neutral-content">
                 <span class="shrink-0 text-warning">❯</span>
-                <span>Make a landing page for my iOS food tracking app. Use Blueprint MCP</span>
+                <span>Make a landing page for my food tracking app. Use Blueprint MCP</span>
               </div>
               <div class="flex gap-3 text-neutral-content/65">
                 <span class="shrink-0">●</span>
@@ -2808,6 +2913,42 @@
             </div>
           {/each}
         </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="scroll-mt-16 border-b border-base-300 bg-base-200/45">
+      <div class="mx-auto max-w-7xl px-4 py-24 sm:px-8 lg:py-36">
+        <h2
+          class="font-title max-w-3xl text-5xl leading-[0.9] font-semibold tracking-[-0.055em] sm:text-7xl"
+        >
+          Get Blueprint
+        </h2>
+
+        <div class="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:items-stretch">
+          {#each pricingPlans as plan}
+            {#if plan.popular}
+              <div class="aura aura-rainbow h-full w-full motion-reduce:animate-none">
+                <article
+                  class="card h-full w-full bg-base-100 shadow-sm transition-shadow duration-300 hover:shadow-lg motion-reduce:transition-none"
+                  aria-labelledby={`pricing-${plan.slug}`}
+                >
+                  {@render pricingCardContent(plan)}
+                </article>
+              </div>
+            {:else}
+              <article
+                class="card card-border relative h-full bg-base-100 shadow-sm transition-shadow duration-300 hover:shadow-lg motion-reduce:transition-none"
+                aria-labelledby={`pricing-${plan.slug}`}
+              >
+                {@render pricingCardContent(plan)}
+              </article>
+            {/if}
+          {/each}
+        </div>
+
+        <p class="mt-8 text-center text-sm text-base-content/50">
+          3 day free trial - cancel anytime · Secure checkout · License key delivered by email
+        </p>
       </div>
     </section>
 

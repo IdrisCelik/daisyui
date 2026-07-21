@@ -9,12 +9,12 @@ layout: docs
 </script>
 
 <div class="flex flex-wrap items-center justify-center gap-2">
-  <img src="https://img.daisyui.com/images/emoji/1280_mage_1f9d9.png" alt="Setup Expert" class="m-0! size-10 object-contain" width="40" height="40" />
-  <img src="https://img.daisyui.com/images/emoji/1040_woman-police-officer_1f46e-200d-2640-fe0f.png" alt="Rules Enforcer" class="m-0! size-10 object-contain" width="40" height="40" />
-  <img src="https://img.daisyui.com/images/emoji/0960_artist_1f9d1-200d-1f3a8.png" alt="Creative Director" class="m-0! size-10 object-contain" width="40" height="40" />
-  <img src="https://img.daisyui.com/images/emoji/0800_woman-teacher_1f469-200d-1f3eb.png" alt="Page Architect" class="m-0! size-10 object-contain" width="40" height="40" />
-  <img src="https://img.daisyui.com/images/emoji/0880_technologist_1f9d1-200d-1f4bb.png" alt="Component Syntax Expert" class="m-0! size-10 object-contain" width="40" height="40" />
-  <img src="https://img.daisyui.com/images/emoji/1040_detective_1f575-fe0f.png" alt="Quality Inspector" class="m-0! size-10 object-contain" width="40" height="40" />
+  <img src="https://img.daisyui.com/images/emoji/1280_mage_1f9d9.png" alt="Setup Expert" class="m-0! size-16 object-contain" width="40" height="40" />
+  <img src="https://img.daisyui.com/images/emoji/1040_woman-police-officer_1f46e-200d-2640-fe0f.png" alt="Rules Enforcer" class="m-0! size-16 object-contain" width="40" height="40" />
+  <img src="https://img.daisyui.com/images/emoji/0960_artist_1f9d1-200d-1f3a8.png" alt="Creative Director" class="m-0! size-16 object-contain" width="40" height="40" />
+  <img src="https://img.daisyui.com/images/emoji/0800_woman-teacher_1f469-200d-1f3eb.png" alt="Page Architect" class="m-0! size-16 object-contain" width="40" height="40" />
+  <img src="https://img.daisyui.com/images/emoji/0880_technologist_1f9d1-200d-1f4bb.png" alt="Component Syntax Expert" class="m-0! size-16 object-contain" width="40" height="40" />
+  <img src="https://img.daisyui.com/images/emoji/1040_detective_1f575-fe0f.png" alt="Quality Inspector" class="m-0! size-16 object-contain" width="40" height="40" />
 </div>
 
 LLMs often produce generic AI slop by default. They can skim skill files, ignore difficult instructions, hallucinate component syntax, and settle for mediocre design. You then spend more time, effort, and tokens asking for edits.

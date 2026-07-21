@@ -5,8 +5,8 @@
   let { children } = $props()
 </script>
 
-<div class="flex flex-col-reverse justify-between gap-6 xl:flex-row" dir="ltr">
-  <div class="w-full max-w-none grow pt-10">
+<div class="flex flex-col-reverse justify-between gap-6 xl:flex-row">
+  <div class="w-full max-w-none grow pt-10" dir="ltr">
     <div class="flex min-h-[50vh] w-full justify-center p-4">
       <div class="mx-auto w-full max-w-2xl">
         {@render children?.()}
