@@ -392,7 +392,7 @@
             </svg>
 
             <div
-              class="flex w-full flex-col items-center justify-between gap-4 lg:flex-row"
+              class="flex w-full flex-col items-center justify-between gap-4 lg:flex-row!"
               transition:fade={{ duration: 400 }}
             >
               <div class="text-neutral-content flex w-full grow flex-col gap-1">
@@ -559,7 +559,7 @@
       </svg>
 
       <div
-        class="flex w-full flex-col items-center justify-between gap-4 lg:flex-row"
+        class="flex w-full flex-col items-center justify-between gap-4 lg:flex-row!"
         transition:fade={{ duration: 400 }}
       >
         <div class="flex w-full grow flex-col gap-1">
